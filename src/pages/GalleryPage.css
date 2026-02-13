@@ -1,0 +1,541 @@
+/* Gallery Page - Premium Wedding Card Collection */
+
+.gallery-page {
+    min-height: 100vh;
+    background: linear-gradient(135deg, #fafafa 0%, #f5f5f5 100%);
+    padding: 0;
+}
+
+/* Hero Section */
+.gallery-hero {
+    background: linear-gradient(135deg, #1e88e5 0%, #00251a 100%);
+    padding: 5rem 0 4rem;
+    position: relative;
+    overflow: hidden;
+}
+
+.gallery-hero::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 40%;
+    height: 100%;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 0 0 0 100%;
+}
+
+.gallery-hero .section-header {
+    margin-bottom: 2rem;
+}
+
+.gallery-hero .section-title {
+    color: white;
+    font-size: clamp(2.5rem, 5vw, 3.5rem);
+    margin-bottom: 1rem;
+}
+
+.gallery-hero .section-description {
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 1.1rem;
+    max-width: 600px;
+    margin: 0 auto 2rem;
+}
+
+.gallery-hero .design-count-badge {
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: white;
+    font-weight: 600;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+}
+
+/* Filter Section */
+.filter-section {
+    background: white;
+    padding: 2rem 0;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+    position: relative;
+    top: 0;
+    z-index: 100;
+    transition: all 0.3s ease;
+}
+
+.filter-section.scrolled {
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+}
+
+.filter-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    justify-content: center;
+    padding: 0 1rem;
+}
+
+.filter-btn {
+    padding: 0.625rem 1.25rem;
+    border-radius: 50px;
+    font-weight: 500;
+    font-size: 0.9rem;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    border: 2px solid #e5e7eb;
+    background: white;
+    color: #374151;
+    position: relative;
+    overflow: hidden;
+}
+
+.filter-btn::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    border-radius: 50%;
+    background: rgba(30, 136, 229, 0.1);
+    transform: translate(-50%, -50%);
+    transition: width 0.4s ease, height 0.4s ease;
+}
+
+.filter-btn:hover::before {
+    width: 200%;
+    height: 200%;
+}
+
+.filter-btn:hover {
+    border-color: #1e88e5;
+    color: #1e88e5;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(30, 136, 229, 0.2);
+}
+
+.filter-btn.active {
+    background: linear-gradient(135deg, #1e88e5 0%, #1565c0 100%);
+    color: white;
+    border-color: #1e88e5;
+    box-shadow: 0 6px 20px rgba(30, 136, 229, 0.3);
+}
+
+.filter-btn.active::before {
+    display: none;
+}
+
+/* Stats Section */
+.stats-section {
+    padding: 3rem 0;
+    background: white;
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 2rem;
+    max-width: 900px;
+    margin: 0 auto;
+}
+
+.stat-card {
+    background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+    border-radius: 16px;
+    padding: 2rem 1.5rem;
+    text-align: center;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+    transition: all 0.3s ease;
+    border: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.stat-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 24px -4px rgba(0, 0, 0, 0.1);
+}
+
+.stat-value {
+    font-size: 2.5rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+    background: linear-gradient(135deg, #1e88e5, #1565c0);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.stat-value-rose {
+    background: linear-gradient(135deg, #e11d48, #be123c);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.stat-value-amber {
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.stat-value-purple {
+    background: linear-gradient(135deg, #9333ea, #7c3aed);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.stat-value-green {
+    background: linear-gradient(135deg, #10b981, #059669);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.stat-label {
+    color: #6b7280;
+    font-weight: 500;
+    font-size: 0.95rem;
+}
+
+/* Cards Section */
+.cards-section {
+    padding: 4rem 0 6rem;
+}
+
+.cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 2.5rem;
+    animation: fadeInUp 0.6s ease;
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.wedding-card {
+    cursor: pointer;
+    transition: transform 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
+    animation: fadeInCard 0.5s ease both;
+}
+
+@keyframes fadeInCard {
+    from {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+.wedding-card:nth-child(1) {
+    animation-delay: 0.05s;
+}
+
+.wedding-card:nth-child(2) {
+    animation-delay: 0.1s;
+}
+
+.wedding-card:nth-child(3) {
+    animation-delay: 0.15s;
+}
+
+.wedding-card:nth-child(4) {
+    animation-delay: 0.2s;
+}
+
+.wedding-card:nth-child(5) {
+    animation-delay: 0.25s;
+}
+
+.wedding-card:nth-child(6) {
+    animation-delay: 0.3s;
+}
+
+.wedding-card:hover {
+    transform: translateY(-12px);
+}
+
+.wedding-card-inner {
+    position: relative;
+    overflow: hidden;
+    border-radius: 20px;
+    background: white;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+    transition: box-shadow 0.4s ease;
+}
+
+.wedding-card:hover .wedding-card-inner {
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.15);
+}
+
+.card-image-wrapper {
+    position: relative;
+    height: 360px;
+    overflow: hidden;
+    background: linear-gradient(135deg, #f5f5f5, #e5e5e5);
+}
+
+.card-image {
+    width: 100%;
+    height: 100%;
+    object-fit: fill;
+    transition: transform 0.6s cubic-bezier(0.165, 0.84, 0.44, 1);
+}
+
+.wedding-card:hover .card-image {
+    transform: scale(1.08);
+}
+
+.card-overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.4), transparent);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.wedding-card:hover .card-overlay {
+    opacity: 1;
+}
+
+/* Badges */
+.card-badges {
+    position: absolute;
+    top: 1rem;
+    left: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    z-index: 2;
+}
+
+.badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.375rem 0.875rem;
+    border-radius: 50px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: white;
+    backdrop-filter: blur(8px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.badge-popular {
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+}
+
+.badge-premium {
+    background: linear-gradient(135deg, #a855f7, #7c3aed);
+}
+
+/* Hover Overlay */
+.card-hover-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.6);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    z-index: 3;
+}
+
+.wedding-card:hover .card-hover-overlay {
+    opacity: 1;
+}
+
+.card-hover-overlay .btn {
+    transform: translateY(10px);
+    transition: transform 0.3s ease 0.1s, background 0.3s ease, box-shadow 0.3s ease;
+    opacity: 1;
+}
+
+.wedding-card:hover .card-hover-overlay .btn {
+    transform: translateY(0);
+}
+
+/* Customize Button Specific Styling */
+.card-hover-overlay .btn-primary {
+    background: white;
+    color: #1e88e5;
+    border: none;
+    padding: 0.875rem 2rem;
+    font-size: 1rem;
+    font-weight: 600;
+    border-radius: 50px;
+    cursor: pointer;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+}
+
+.card-hover-overlay .btn-primary:hover {
+    background: #1e88e5;
+    color: white;
+    box-shadow: 0 12px 30px rgba(30, 136, 229, 0.4);
+    transform: scale(1.05);
+}
+
+/* Card Details */
+.card-details {
+    padding: 1.5rem;
+    background: white;
+}
+
+.card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.75rem;
+}
+
+.card-name {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.25rem;
+    color: #1f2937;
+    font-weight: 400;
+    margin: 0;
+}
+
+.color-dot {
+    width: 1.5rem;
+    height: 1.5rem;
+    border-radius: 50%;
+    border: 2px solid white;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.card-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-top: 0.75rem;
+    border-top: 1px solid #f3f4f6;
+}
+
+.card-theme {
+    font-size: 0.875rem;
+    color: #6b7280;
+    font-weight: 500;
+}
+
+.card-price {
+    font-size: 1.25rem;
+    font-weight: 700;
+    background: linear-gradient(135deg, #1e88e5, #1565c0);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+/* Empty State */
+.empty-state {
+    text-align: center;
+    padding: 6rem 2rem;
+    animation: fadeIn 0.5s ease;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+.empty-icon {
+    width: 5rem;
+    height: 5rem;
+    color: #d1d5db;
+    margin: 0 auto 2rem;
+}
+
+.empty-title {
+    font-size: 2rem;
+    font-family: 'Playfair Display', serif;
+    color: #6b7280;
+    margin-bottom: 1rem;
+}
+
+.empty-description {
+    color: #9ca3af;
+    font-size: 1.1rem;
+    margin-bottom: 2rem;
+}
+
+.empty-state .btn {
+    background: linear-gradient(135deg, #1e88e5 0%, #1565c0 100%);
+    color: white;
+    border: none;
+    padding: 1rem 2.5rem;
+    font-size: 1rem;
+    font-weight: 600;
+    border-radius: 50px;
+    cursor: pointer;
+    box-shadow: 0 8px 20px rgba(30, 136, 229, 0.3);
+    transition: all 0.3s ease;
+}
+
+.empty-state .btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 30px rgba(30, 136, 229, 0.4);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .gallery-hero {
+        padding: 3rem 0 2rem;
+    }
+
+    .filter-container {
+        gap: 0.5rem;
+    }
+
+    .filter-btn {
+        padding: 0.5rem 1rem;
+        font-size: 0.85rem;
+    }
+
+    .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1rem;
+    }
+
+    .stat-card {
+        padding: 1.5rem 1rem;
+    }
+
+    .stat-value {
+        font-size: 2rem;
+    }
+
+    .cards-grid {
+        grid-template-columns: 1fr;
+        gap: 2rem;
+    }
+
+    .card-image-wrapper {
+        height: 300px;
+    }
+}
+
+@media (min-width: 1400px) {
+    .cards-grid {
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    }
+}

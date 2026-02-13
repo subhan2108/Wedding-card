@@ -1,0 +1,294 @@
+/* ConfirmationPage - Premium Success Design */
+
+.confirmation-page {
+    min-height: 100vh;
+    background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+    padding: 3rem 0 6rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.confirmation-container {
+    max-width: 700px;
+    margin: 0 auto;
+    padding: 0 1.5rem;
+}
+
+.confirmation-card {
+    background: white;
+    border-radius: 24px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
+    padding: 3.5rem 3rem;
+    text-align: center;
+    border: 1px solid rgba(0, 0, 0, 0.05);
+    animation: slideUp 0.6s ease;
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Success Icon */
+.success-icon {
+    width: 100px;
+    height: 100px;
+    margin: 0 auto 2rem;
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    box-shadow: 0 10px 30px rgba(16, 185, 129, 0.3);
+    animation: scaleIn 0.5s ease 0.2s both;
+}
+
+@keyframes scaleIn {
+    from {
+        transform: scale(0);
+    }
+
+    to {
+        transform: scale(1);
+    }
+}
+
+.success-icon .icon-xl {
+    width: 50px;
+    height: 50px;
+}
+
+/* Title & Description */
+.confirmation-title {
+    font-size: 2.5rem;
+    font-family: 'Playfair Display', serif;
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 1rem;
+}
+
+.confirmation-description {
+    font-size: 1.1rem;
+    color: #6b7280;
+    line-height: 1.7;
+    margin-bottom: 2.5rem;
+}
+
+/* Final Preview */
+.final-preview {
+    background: linear-gradient(135deg, #fafafa 0%, #f5f5f5 100%);
+    border: 2px solid #e5e7eb;
+    border-radius: 16px;
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+    display: flex;
+    justify-content: center;
+}
+
+.final-card-wrapper {
+    position: relative;
+    max-width: 350px;
+    width: 100%;
+    margin: 0 auto;
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    background: white;
+    padding: 0.75rem;
+}
+
+.final-card-image {
+    width: 100%;
+    height: auto;
+    border-radius: 8px;
+    display: block;
+}
+
+.premium-badge-absolute {
+    position: absolute;
+    top: -10px;
+    right: -10px;
+    background: linear-gradient(135deg, #9b59b6, #8e44ad);
+    color: white;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 12px rgba(155, 89, 182, 0.3);
+}
+
+/* Order Details Card */
+.order-details-card {
+    background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+    border: 2px solid #bfdbfe;
+    border-radius: 16px;
+    padding: 2rem;
+    margin-bottom: 2rem;
+    text-align: left;
+}
+
+.details-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #1f2937;
+    margin-bottom: 1.5rem;
+    text-align: center;
+}
+
+.details-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.detail-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid #bfdbfe;
+    font-size: 0.95rem;
+}
+
+.detail-row:last-child {
+    border-bottom: none;
+    padding-top: 1rem;
+    margin-top: 0.5rem;
+    border-top: 2px solid #bfdbfe;
+}
+
+.detail-value {
+    font-weight: 600;
+    color: #1f2937;
+}
+
+.detail-total {
+    font-size: 1.5rem;
+    font-weight: 700;
+    background: linear-gradient(135deg, #1e88e5, #1565c0);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+/* Next Steps Card */
+.next-steps-card {
+    background: linear-gradient(135deg, #fefce8 0%, #fef3c7 100%);
+    border: 2px solid #fde047;
+    border-radius: 16px;
+    padding: 2rem;
+    margin-bottom: 2rem;
+    text-align: left;
+}
+
+.steps-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #1f2937;
+    margin-bottom: 1.5rem;
+    text-align: center;
+}
+
+.steps-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+
+.step-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+}
+
+.step-number {
+    width: 32px;
+    height: 32px;
+    background: linear-gradient(135deg, #fbbf24, #f59e0b);
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    flex-shrink: 0;
+    box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+}
+
+.step-item span {
+    padding-top: 0.25rem;
+    color: #78350f;
+    line-height: 1.6;
+}
+
+/* Email Confirmation */
+.confirmation-email {
+    font-size: 0.95rem;
+    color: #6b7280;
+    line-height: 1.7;
+    margin-bottom: 2rem;
+    padding: 1.5rem;
+    background: #f9fafb;
+    border-radius: 12px;
+}
+
+.email-highlight {
+    font-weight: 600;
+    color: #1e88e5;
+}
+
+/* Button */
+.confirmation-page .btn {
+    margin-top: 1rem;
+}
+
+.btn-lg {
+    padding: 1.125rem 2.5rem;
+    font-size: 1.0625rem;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .confirmation-card {
+        padding: 2.5rem 1.5rem;
+    }
+
+    .success-icon {
+        width: 80px;
+        height: 80px;
+    }
+
+    .success-icon .icon-xl {
+        width: 40px;
+        height: 40px;
+    }
+
+    .confirmation-title {
+        font-size: 2rem;
+    }
+
+    .confirmation-description {
+        font-size: 1rem;
+    }
+
+    .final-names {
+        font-size: 1.75rem;
+    }
+
+    .order-details-card,
+    .next-steps-card {
+        padding: 1.5rem;
+    }
+}
