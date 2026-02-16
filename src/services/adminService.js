@@ -25,7 +25,7 @@ export const adminService = {
     addTemplate: (template) => {
         try {
             const templates = adminService.getTemplates();
-            
+
             // Check for duplicate ID
             if (templates.some(t => t.id === template.id)) {
                 throw new Error('Template with this ID already exists');

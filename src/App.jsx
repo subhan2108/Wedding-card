@@ -859,8 +859,8 @@
 
 
 
-import React, { useState, useMemo } from "react";
-import { Routes, Route, Navigate } from "react-router-dom";
+import React, { useState, useMemo, useEffect } from "react";
+import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 
 // Pages
 import HomePage from "./pages/HomePage";
@@ -881,27 +881,63 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import { adminService } from "./services/adminService";
 
 const App = () => {
-  const [selectedCard, setSelectedCard] = useState(null);
+  const location = useLocation(); // Hook to detect route changes
 
-  const [customization, setCustomization] = useState({
-    groomName: "Alexander",
-    brideName: "Sophia",
-    weddingDate: "June 15, 2026",
-    venue: "Grand Ballroom, The Ritz",
-    familyNames: "",
-    font: "Playfair Display",
-    textColor: "#8B4513",
-    quantity: 100
+  // Initialize state from localStorage or defaults
+  const [selectedCard, setSelectedCard] = useState(() => {
+    const saved = localStorage.getItem('selectedCard');
+    return saved ? JSON.parse(saved) : null;
   });
 
-  const [cart, setCart] = useState([]);
-  const [checkoutData, setCheckoutData] = useState({
-    name: "",
-    email: "",
-    address: ""
+  const [customization, setCustomization] = useState(() => {
+    const saved = localStorage.getItem('customization');
+    return saved ? JSON.parse(saved) : {
+      groomName: "Alexander",
+      brideName: "Sophia",
+      weddingDate: "June 15, 2026",
+      venue: "Grand Ballroom, The Ritz",
+      familyNames: "",
+      font: "Playfair Display",
+      textColor: "#8B4513",
+      quantity: 100
+    };
   });
 
-  const [activeFilter, setActiveFilter] = useState("All");
+  const [cart, setCart] = useState(() => {
+    const saved = localStorage.getItem('cart');
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  const [checkoutData, setCheckoutData] = useState(() => {
+    const saved = localStorage.getItem('checkoutData');
+    return saved ? JSON.parse(saved) : {
+      name: "",
+      email: "",
+      address: ""
+    };
+  });
+
+  // Persist state to localStorage
+  useEffect(() => {
+    localStorage.setItem('selectedCard', JSON.stringify(selectedCard));
+  }, [selectedCard]);
+
+  useEffect(() => {
+    localStorage.setItem('customization', JSON.stringify(customization));
+  }, [customization]);
+
+  useEffect(() => {
+    localStorage.setItem('cart', JSON.stringify(cart));
+  }, [cart]);
+
+  useEffect(() => {
+    localStorage.setItem('checkoutData', JSON.stringify(checkoutData));
+  }, [checkoutData]);
+
+  const [activeCategory, setActiveCategory] = useState("All");
+  const [activeSubCategory, setActiveSubCategory] = useState("All");
+  const [activeLanguage, setActiveLanguage] = useState("All");
+  const [activeSymbol, setActiveSymbol] = useState("All");
 
   // Helper function to get color name from hex (defined before use)
   const getColorName = (hex) => {
@@ -920,28 +956,38 @@ const App = () => {
     return colorMap[hex] || 'Gold';
   };
 
-  // Generate wedding cards: MERGE real templates from admin + dummy cards
-  const weddingCards = useMemo(() => {
-    // Get real templates from admin
-    const realTemplates = adminService.getTemplates();
+  // State for Real Cards (fetched from Admin)
+  const [realCards, setRealCards] = useState([]);
 
-    // Transform real templates to gallery card format
-    const realCards = realTemplates.map(template => ({
+  // Fetch real templates whenever location changes (e.g. returning from Admin)
+  useEffect(() => {
+    const realTemplates = adminService.getTemplates();
+    const formattedCards = realTemplates.map(template => ({
       id: template.id,
       name: template.name,
-      theme: template.category || 'Uncategorized',
+      category: template.category || 'Wedding', // Default to Wedding if missing
+      subcategory: template.subcategory || template.category || 'General',
+      language: template.language || 'English',
+      symbols: Array.isArray(template.symbols)
+        ? template.symbols
+        : (typeof template.symbols === 'string' ? template.symbols.split(',').map(s => s.trim()).filter(Boolean) : []),
+      theme: template.subcategory || template.category || 'General', // Legacy support
       color: template.colorHex ? getColorName(template.colorHex) : 'Gold',
       colorHex: template.colorHex || '#D4AF37',
       price: template.price || parseFloat((2 + Math.random() * 2.5).toFixed(2)),
       popular: template.tags?.includes('Popular') || false,
       premium: template.tags?.includes('Premium') || false,
       image: template.previewImage || template.backgroundUrl || `https://placehold.co/400x300/f8f4e9/8B4513?text=${encodeURIComponent(template.name)}`,
+      variants: template.variants || [],
       // Keep the original template data for editing
       isRealTemplate: true,
       template: template
     }));
+    setRealCards(formattedCards);
+  }, [location.pathname]); // Update when route changes
 
-    // Generate dummy cards (keep for testing other pages)
+  // Generate dummy cards (Memoized to avoid re-generation)
+  const dummyCards = useMemo(() => {
     const themes = [
       "Traditional", "Modern", "Royal", "Minimal", "Vintage",
       "Boho", "Rustic", "Art Deco", "Floral", "Geometric"
@@ -966,7 +1012,10 @@ const App = () => {
       "Moonlight Serenade", "Garden Bliss", "Diamond Forever"
     ];
 
-    const dummyCards = Array.from({ length: 120 }).map((_, i) => {
+    const languages = ['English', 'Hindi', 'Urdu', 'Mixed'];
+    const possibleSymbols = ['Om', 'Ganesha', 'Moon', 'Floral', 'Bismillah', 'Khanda', 'Cross'];
+
+    return Array.from({ length: 120 }).map((_, i) => {
       const theme = themes[Math.floor(Math.random() * themes.length)];
       const color = colors[Math.floor(Math.random() * colors.length)];
       const name = `${names[Math.floor(Math.random() * names.length)]} ${i + 1}`;
@@ -974,6 +1023,10 @@ const App = () => {
       return {
         id: `dummy-${i + 1}`,
         name,
+        category: "Wedding", // All dummy cards are Wedding cards
+        subcategory: theme,
+        language: languages[Math.floor(Math.random() * languages.length)],
+        symbols: [possibleSymbols[Math.floor(Math.random() * possibleSymbols.length)]],
         theme,
         color: color.name,
         colorHex: color.hex,
@@ -984,17 +1037,41 @@ const App = () => {
         isRealTemplate: false
       };
     });
-
-    // Merge: Real templates first, then dummy cards
-    return [...realCards, ...dummyCards];
   }, []);
 
-
+  // Merge Real + Dummy Cards
+  const weddingCards = useMemo(() => {
+    return [...realCards, ...dummyCards];
+  }, [realCards, dummyCards]);
 
   const filteredCards = useMemo(() => {
-    if (activeFilter === "All") return weddingCards;
-    return weddingCards.filter(card => card.theme === activeFilter);
-  }, [activeFilter, weddingCards]);
+    return weddingCards.filter(card => {
+      // 1. Filter by Category
+      if (activeCategory !== 'All' && card.category !== activeCategory) {
+        return false;
+      }
+      // 2. Filter by Subcategory
+      if (activeSubCategory !== 'All' && card.subcategory !== activeSubCategory) {
+        return false;
+      }
+      // 3. Filter by Language
+      if (activeLanguage !== 'All' && (!card.language || card.language.toLowerCase() !== activeLanguage.toLowerCase())) {
+        return false;
+      }
+      // 4. Filter by Symbol
+      if (activeSymbol !== 'All') {
+        if (!card.symbols || !Array.isArray(card.symbols)) return false;
+
+        // Case-insensitive check
+        const hasSymbol = card.symbols.some(s =>
+          typeof s === 'string' && s.toLowerCase().trim() === activeSymbol.toLowerCase().trim()
+        );
+
+        if (!hasSymbol) return false;
+      }
+      return true;
+    });
+  }, [activeCategory, activeSubCategory, activeLanguage, activeSymbol, weddingCards]);
 
   const handleCustomize = (card) => {
     setSelectedCard(card);
@@ -1018,7 +1095,10 @@ const App = () => {
           <HomePage
             customization={customization}
             weddingCards={weddingCards}
-            setActiveFilter={setActiveFilter}
+            setActiveFilter={(filter) => {
+              setActiveCategory("Wedding"); // Assuming homepage filters are subcategories of Wedding for now, or we can update HomePage too
+              setActiveSubCategory(filter);
+            }}
           />
         }
       />
@@ -1029,8 +1109,14 @@ const App = () => {
           <GalleryPage
             weddingCards={weddingCards}
             filteredCards={filteredCards}
-            activeFilter={activeFilter}
-            setActiveFilter={setActiveFilter}
+            activeCategory={activeCategory}
+            setActiveCategory={setActiveCategory}
+            activeSubCategory={activeSubCategory}
+            setActiveSubCategory={setActiveSubCategory}
+            activeLanguage={activeLanguage}
+            setActiveLanguage={setActiveLanguage}
+            activeSymbol={activeSymbol}
+            setActiveSymbol={setActiveSymbol}
             handleCustomize={handleCustomize}
           />
         }

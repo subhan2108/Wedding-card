@@ -6,9 +6,11 @@ import {
   ShoppingCart,
   Gift,
   Clock,
-  Crown
+  Crown,
+  Check
 } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
+import { useState } from "react";
 import "./CustomizePage.css";
 
 const CustomizePage = ({
@@ -18,9 +20,45 @@ const CustomizePage = ({
   addToCart
 }) => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const [activeVariantIndex, setActiveVariantIndex] = useState(location.state?.initialVariantIndex || 0);
+
+  // Fallback if selectedCard is not available yet (e.g. reload on this page)
+  // In a real app, we might need to fetch data or redirect.
+  if (!selectedCard) {
+    return <div className="loading">Loading...</div>; // Simple fallback
+  }
+
+  // Normalize variants
+  const variants = selectedCard.variants && selectedCard.variants.length > 0
+    ? selectedCard.variants
+    : [{
+      id: 'default',
+      colorHex: selectedCard.colorHex,
+      previewImage: selectedCard.image || selectedCard.previewImage
+    }];
+
+  const activeVariant = variants[activeVariantIndex] || variants[0];
+  const displayImage = activeVariant.previewImage || selectedCard.image || selectedCard.previewImage;
+
   const totalPrice = selectedCard.price * customization.quantity;
   const discountApplied = customization.quantity >= 100;
   const finalPrice = discountApplied ? totalPrice * 0.9 : totalPrice;
+
+  const handleCustomizeClick = () => {
+    // Pass the active variant index to the editor page via state
+    // The EditorPage will read this state to load the correct JSON view
+    navigate(`/editor/${selectedCard.id}`, { state: { variantIndex: activeVariantIndex } });
+  };
+
+  const handleAddToCart = () => {
+    // We might need to pass activeVariant info to addToCart
+    // For now assuming addToCart just adds the generic card, 
+    // but in a real app we'd want to add the specific variant.
+    // The user's request is purely about UI preview for now.
+    addToCart();
+    navigate("/checkout");
+  };
 
   return (
     <div className="customize-page-split">
@@ -42,9 +80,15 @@ const CustomizePage = ({
           <div className="card-3d-wrapper">
             <div className="card-preview-shadow">
               <img
-                src={selectedCard.image}
+                src={displayImage}
                 alt={selectedCard.name}
                 className="preview-image"
+                onError={(e) => {
+                  e.target.onerror = null;
+                  if (selectedCard.image && e.target.src !== selectedCard.image) {
+                    e.target.src = selectedCard.image;
+                  }
+                }}
               />
 
               {selectedCard.premium && (
@@ -77,12 +121,57 @@ const CustomizePage = ({
                 <span className="meta-badge meta-badge-premium">Premium</span>
               )}
             </div>
+
+            {/* Language & Symbols */}
+            <div className="card-tags" style={{ marginTop: '16px', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
+              <div style={{ marginBottom: '6px' }}>
+                <span style={{ fontWeight: 600, marginRight: '6px' }}>Language:</span>
+                <span className="tag-pill">{selectedCard.language || 'English'}</span>
+              </div>
+              {selectedCard.symbols && selectedCard.symbols.length > 0 && (
+                <div>
+                  <span style={{ fontWeight: 600, marginRight: '6px' }}>Includes:</span>
+                  {selectedCard.symbols.map(sym => (
+                    <span key={sym} className="tag-pill" style={{ marginRight: '4px' }}>{sym}</span>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
+
+          <div className="divider"></div>
+
+          {/* Color Selection */}
+          <div className="color-selection-section">
+            <label className="form-label" style={{ marginBottom: '12px', display: 'block' }}>Select Color Theme</label>
+            <div className="color-options-row">
+              {variants.map((variant, idx) => (
+                <button
+                  key={variant.id || idx}
+                  className={`color-option-btn ${activeVariantIndex === idx ? 'active' : ''}`}
+                  onClick={() => setActiveVariantIndex(idx)}
+                  title={variant.colorHex}
+                >
+                  <span
+                    className="color-swatch-circle"
+                    style={{ backgroundColor: variant.colorHex }}
+                  />
+                  {activeVariantIndex === idx && (
+                    <div className="active-check-icon">
+                      <Check size={12} strokeWidth={3} color={['#FFFFFF', '#FFFFF0'].includes(variant.colorHex) ? '#000' : '#fff'} />
+                    </div>
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="divider"></div>
 
           {/* Customize Button */}
           <button
             className="btn-customize"
-            onClick={() => navigate(`/editor/${selectedCard.id}`)}
+            onClick={handleCustomizeClick}
           >
             Customize Details
           </button>
@@ -153,10 +242,7 @@ const CustomizePage = ({
           {/* Action Buttons */}
           <div className="action-buttons">
             <button
-              onClick={() => {
-                addToCart();
-                navigate("/checkout");
-              }}
+              onClick={handleAddToCart}
               className="btn-add-cart"
             >
               <ShoppingCart size={18} />

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { adminService } from '../services/adminService';
 import Canvas from '../components/Editor/Canvas';
 import {
@@ -60,27 +60,95 @@ const EditorPage = ({ setCart, customization }) => {
     const [historyIndex, setHistoryIndex] = useState(-1);
     const [editorTheme, setEditorTheme] = useState('light');
 
+    // Multi-View Support
+    const [activeViewIndex, setActiveViewIndex] = useState(0);
+    const [viewLayers, setViewLayers] = useState([]); // Array of layer arrays for each view
+
+    const location = useLocation();
+
     useEffect(() => {
         const templates = adminService.getTemplates();
-        const foundTemplate = templates.find(t => t.id === cardName) || templates[0];
+        let foundTemplate = templates.find(t => t.id === cardName) || templates[0];
 
         if (foundTemplate) {
+            // Handle variant selection from navigation
+            const variantIndex = location.state?.variantIndex;
+            if (typeof variantIndex === 'number' && foundTemplate.variants && foundTemplate.variants[variantIndex]) {
+                const variant = foundTemplate.variants[variantIndex];
+
+                // Determine if variant has valid views
+                const variantViews = (variant.views || variant.jsonViews || []).filter(v => v);
+                const hasVariantViews = variantViews.length > 0;
+
+                // Create a shallow copy to avoid mutating the original template object in the store permanently for this session
+                foundTemplate = {
+                    ...foundTemplate,
+                    // Override image/preview with variant's image
+                    image: variant.previewImage || foundTemplate.image,
+                    previewImage: variant.previewImage || foundTemplate.previewImage,
+                    colorHex: variant.colorHex || foundTemplate.colorHex,
+                    backgroundUrl: variant.backgroundUrl || foundTemplate.backgroundUrl,
+
+                    // Override views/layers if the variant has specific JSON data
+                    views: hasVariantViews ? variantViews : foundTemplate.views,
+                    layers: hasVariantViews ? (variantViews[0].layers || []) : foundTemplate.layers,
+
+                    // Override dimensions if provided in the variant's main view
+                    width: (hasVariantViews && variantViews[0].width) || foundTemplate.width,
+                    height: (hasVariantViews && variantViews[0].height) || foundTemplate.height
+                };
+            }
+
             setTemplate(foundTemplate);
 
-            // Try to load saved design from storage
-            const savedDesign = storageService.loadDesign(cardName || 'unsaved');
-            if (savedDesign && savedDesign.templateId === foundTemplate.id) {
-                console.log('Restoring saved design from storage');
-                setLayers(savedDesign.layers || []);
-                if (savedDesign.fieldValues) {
-                    setFieldValues(savedDesign.fieldValues);
-                }
-            } else {
-                // Use .layers if available, fallback to .defaultFields
-                setLayers(foundTemplate.layers || foundTemplate.defaultFields || []);
-            }
+            // Initialize Multi-View State
+            const initialViews = foundTemplate.views && foundTemplate.views.length > 0
+                ? foundTemplate.views.map(v => v ? v.layers || [] : [])
+                : [foundTemplate.layers || foundTemplate.defaultFields || []];
+
+            // Ensure at least 4 slots if we want fixed slots, or just dynamic. 
+            // Admin saves mixed array? No, Admin saves generic array.
+            // Let's stick to what's in template.views
+
+            setViewLayers(initialViews);
+            setLayers(initialViews[0] || []);
+            setActiveViewIndex(0);
+
+            // Legacy support or override from storage could go here
+            // For now, let's trust the template data first for the structure
         }
-    }, [cardName]);
+    }, [cardName, location.state]);
+
+    // Update viewLayers whenever current layers change (debounce or sync?)
+    // Better to sync on specific actions or just keep them in sync?
+    // Let's update viewLayers when we switch OR when saving. 
+    // Actually, distinct `layers` state for current view is good for performance.
+    // We need to sync `layers` back to `viewLayers` before switching.
+
+    const handleSwitchView = (newIndex) => {
+        if (newIndex === activeViewIndex) return;
+
+        // 1. Save current layers to viewLayers
+        const updatedViewLayers = [...viewLayers];
+        updatedViewLayers[activeViewIndex] = layers;
+        setViewLayers(updatedViewLayers);
+
+        // 2. Switch
+        setActiveViewIndex(newIndex);
+        setLayers(updatedViewLayers[newIndex] || []);
+        setSelectedLayerId(null);
+        setHistory([]); // reset history for new view? Or keep global? Reset is safer for now.
+        setHistoryIndex(-1);
+    };
+
+    // Keep viewLayers synced for final save
+    useEffect(() => {
+        setViewLayers(prev => {
+            const newV = [...prev];
+            newV[activeViewIndex] = layers;
+            return newV;
+        });
+    }, [layers, activeViewIndex]);
 
     const handleFieldValueChange = (key, value) => {
         setFieldValues(prev => ({ ...prev, [key]: value }));
@@ -274,9 +342,15 @@ const EditorPage = ({ setCart, customization }) => {
     // Keyboard controls
     const handleSave = () => {
         if (!template) return;
+
+        // Ensure current layers are saved to viewLayers
+        const currentViewLayers = [...viewLayers];
+        currentViewLayers[activeViewIndex] = layers;
+
         const result = storageService.saveDesign(cardName || 'unsaved', {
             templateId: template.id,
-            layers,
+            layers: layers, // Curren view
+            viewLayers: currentViewLayers, // All views
             fieldValues
         });
         if (result.success) {
@@ -588,6 +662,55 @@ const EditorPage = ({ setCart, customization }) => {
                                 </div>
                             </div>
 
+                            {/* View Switcher (Carousel in Sidebar) */}
+                            {template && ((template.views && template.views.length > 1) || (template.images && template.images.length > 1)) && (
+                                <div className="data-section views-section">
+                                    <h4>Card Views</h4>
+                                    <div className="view-carousel" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--bg-secondary)', padding: '8px', borderRadius: '8px', border: '1px solid var(--border-soft)' }}>
+                                        <button
+                                            className="btn btn-icon btn-sm"
+                                            onClick={() => {
+                                                const total = (template.views || template.images).length;
+                                                const newIndex = (activeViewIndex - 1 + total) % total;
+                                                handleSwitchView(newIndex);
+                                            }}
+                                            disabled={(template.views || template.images).length <= 1}
+                                            title="Previous View"
+                                        >
+                                            <BiChevronDown size={20} style={{ transform: 'rotate(90deg)' }} />
+                                        </button>
+
+                                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                                            <span style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text-primary)' }}>
+                                                View {activeViewIndex + 1}
+                                            </span>
+                                            <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                                                of {(template.views || template.images).filter(v => v).length}
+                                            </span>
+                                        </div>
+
+                                        <button
+                                            className="btn btn-icon btn-sm"
+                                            onClick={() => {
+                                                const total = (template.views || template.images).length;
+                                                const newIndex = (activeViewIndex + 1) % total;
+                                                handleSwitchView(newIndex);
+                                            }}
+                                            disabled={(template.views || template.images).length <= 1}
+                                            title="Next View"
+                                        >
+                                            <BiChevronUp size={20} style={{ transform: 'rotate(90deg)' }} />
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+
+
+
+
+
+
+
                             {/* 2. Selection Properties (Contextual) */}
                             {selectedLayer && (
                                 <div className="data-section properties-section">
@@ -773,9 +896,14 @@ const EditorPage = ({ setCart, customization }) => {
                 <div className="editor-canvas-container" onClick={() => setSelectedLayerId(null)}>
                     <div className="canvas-wrapper" onClick={(e) => e.stopPropagation()}>
                         <Canvas
-                            width={template.width}
-                            height={template.height}
-                            backgroundUrl={template.backgroundUrl}
+                            width={template.views?.[activeViewIndex]?.width || template.width}
+                            height={template.views?.[activeViewIndex]?.height || template.height}
+                            backgroundUrl={
+                                // Use view specific background if available, else standard fallback
+                                template.images?.[activeViewIndex] ||
+                                template.views?.[activeViewIndex]?.backgroundUrl ||
+                                template.backgroundUrl
+                            }
                             layers={layers}
                             selectedLayerId={selectedLayerId}
                             onSelectLayer={setSelectedLayerId}
@@ -789,6 +917,8 @@ const EditorPage = ({ setCart, customization }) => {
                             onContextMenu={handleContextMenu}
                         />
                     </div>
+
+
 
                     {/* Zoom UI Refresh */}
                     {!isPreviewMode && (
@@ -818,7 +948,7 @@ const EditorPage = ({ setCart, customization }) => {
                     )}
                 </div>
             </div>
-        </div>
+        </div >
     );
 };
 
