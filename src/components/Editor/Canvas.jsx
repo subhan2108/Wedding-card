@@ -437,7 +437,8 @@ const Canvas = ({
                     transition: 'transform 0.2s ease-out',
                     cursor: editingLayerId ? 'text' : 'default',
                     imageRendering: 'optimizeQuality',
-                    shapeRendering: 'geometricPrecision'
+                    shapeRendering: 'geometricPrecision',
+                    height: "25rem"
                 }}
             >
                 {/* Background - Locked & Non-selectable */}

@@ -11,13 +11,15 @@ import {
 } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useState } from "react";
+import { Skeleton, SkeletonText } from "../components/common/Skeleton";
 import "./CustomizePage.css";
 
 const CustomizePage = ({
   selectedCard,
   customization,
   setCustomization,
-  addToCart
+  addToCart,
+  loading
 }) => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -25,8 +27,50 @@ const CustomizePage = ({
 
   // Fallback if selectedCard is not available yet (e.g. reload on this page)
   // In a real app, we might need to fetch data or redirect.
-  if (!selectedCard) {
-    return <div className="loading">Loading...</div>; // Simple fallback
+  // Fallback if selectedCard is not available yet or loading
+  if (loading || !selectedCard) {
+    return (
+      <div className="customize-page-split">
+        {/* LEFT SIDE - Skeleton */}
+        <div className="customize-left">
+          <div className="preview-actions" style={{ gap: '10px', display: 'flex' }}>
+            <Skeleton width="90px" height="36px" borderRadius="20px" />
+            <Skeleton width="90px" height="36px" borderRadius="20px" />
+          </div>
+
+          <div className="card-preview-container" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
+            <Skeleton width="400px" height="560px" borderRadius="4px" style={{ boxShadow: '0 10px 30px rgba(0,0,0,0.1)' }} />
+          </div>
+        </div>
+
+        {/* RIGHT SIDE - Skeleton */}
+        <div className="customize-right">
+          <div className="customize-sidebar">
+            <SkeletonText lines={1} style={{ height: '40px', marginBottom: '8px', width: '80%' }} />
+            <SkeletonText lines={1} style={{ height: '20px', marginBottom: '24px', width: '40%' }} />
+
+            <div style={{ display: 'flex', gap: '1rem', marginBottom: '2rem' }}>
+              <Skeleton width="60px" height="60px" borderRadius="8px" />
+              <Skeleton width="60px" height="60px" borderRadius="8px" />
+              <Skeleton width="60px" height="60px" borderRadius="8px" />
+            </div>
+
+            <div className="divider" style={{ margin: '2rem 0' }}></div>
+
+            <Skeleton width="100%" height="50px" borderRadius="8px" style={{ marginBottom: '2rem' }} />
+
+            <div className="divider" style={{ margin: '2rem 0' }}></div>
+
+            <SkeletonText lines={3} style={{ marginBottom: '1rem' }} />
+            <Skeleton width="100%" height="40px" borderRadius="8px" />
+
+            <div style={{ marginTop: '2rem' }}>
+              <Skeleton width="100%" height="56px" borderRadius="30px" />
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   // Normalize variants
@@ -52,12 +96,10 @@ const CustomizePage = ({
   };
 
   const handleAddToCart = () => {
-    // We might need to pass activeVariant info to addToCart
-    // For now assuming addToCart just adds the generic card, 
-    // but in a real app we'd want to add the specific variant.
+    // We pass activeVariant info to addToCart if needed
+    // For now assuming addToCart just adds the generic card.
     // The user's request is purely about UI preview for now.
     addToCart();
-    navigate("/checkout");
   };
 
   return (
@@ -76,27 +118,25 @@ const CustomizePage = ({
         </div>
 
         <div className="card-preview-container">
-          {/* 3D Card Wrapper with Tilt Effect */}
-          <div className="card-3d-wrapper">
-            <div className="card-preview-shadow">
-              <img
-                src={displayImage}
-                alt={selectedCard.name}
-                className="preview-image"
-                onError={(e) => {
-                  e.target.onerror = null;
-                  if (selectedCard.image && e.target.src !== selectedCard.image) {
-                    e.target.src = selectedCard.image;
-                  }
-                }}
-              />
+          <div className="card-envelope"></div>
+          <div className="card-flat-preview">
+            <img
+              src={displayImage}
+              alt={selectedCard.name}
+              className="preview-image"
+              onError={(e) => {
+                e.target.onerror = null;
+                if (selectedCard.image && e.target.src !== selectedCard.image) {
+                  e.target.src = selectedCard.image;
+                }
+              }}
+            />
 
-              {selectedCard.premium && (
-                <div className="premium-badge-corner">
-                  <Crown size={16} />
-                </div>
-              )}
-            </div>
+            {selectedCard.premium && (
+              <div className="premium-badge-corner">
+                <Crown size={16} />
+              </div>
+            )}
           </div>
         </div>
       </div>

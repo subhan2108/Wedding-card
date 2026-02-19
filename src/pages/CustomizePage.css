@@ -5,19 +5,20 @@
   background: #ffffff;
 }
 
-/* LEFT SIDE - Preview (60% on desktop) */
+/* LEFT SIDE - Preview */
 .customize-left {
   flex: 1;
-  background: linear-gradient(135deg, #f0f7ff 0%, #e8f3fc 50%, #f4f9fe 100%);
+  background: #fff9f0;
+  /* Soft warm cream like the reference image */
   padding: 40px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: start;
+  justify-content: flex-start;
   position: relative;
 }
 
-/* Desktop: Make preview wider */
+/* Desktop: 60/40 Split */
 @media (min-width: 1024px) {
   .customize-left {
     flex: 0 0 60%;
@@ -55,86 +56,68 @@
   background: rgba(255, 255, 255, 0.95);
   color: #2c3e50;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  border: 1px solid rgba(30, 136, 229, 0.1);
+  border: 1px solid rgba(13, 110, 253, 0.1);
 }
 
 .action-btn-secondary:hover {
   background: #ffffff;
-  box-shadow: 0 4px 16px rgba(30, 136, 229, 0.2);
+  box-shadow: 0 4px 16px rgba(13, 110, 253, 0.2);
   transform: translateY(-1px);
-  border-color: #1e88e5;
-  color: #1e88e5;
+  border-color: #0d6efd;
+  color: #0d6efd;
 }
 
 .card-preview-container {
-  max-width: 450px;
+  max-width: 400px;
   width: 100%;
-  padding: 60px 40px;
-  perspective: 1500px;
-  /* Enable 3D perspective */
-}
-
-/* 3D Card Wrapper - Creates the tilted floating effect */
-.card-3d-wrapper {
+  padding: 20px;
   position: relative;
-  transform-style: preserve-3d;
-  transition: transform 0.6s ease;
-  /* Subtle tilt like reference image */
-  transform: rotateY(-5deg) rotateX(3deg);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-top: 60px;
 }
 
-.card-3d-wrapper:hover {
-  transform: rotateY(-2deg) rotateX(1deg) translateY(-10px);
-}
-
-.card-preview-shadow {
-  position: relative;
-  background: white;
-  border-radius: 8px;
-  box-shadow:
-    /* Main card shadow */
-    -15px 20px 60px rgba(0, 0, 0, 0.25),
-    /* Left edge shadow (darker) */
-    -30px 0 40px rgba(0, 0, 0, 0.15),
-    /* Bottom shadow */
-    0 25px 50px rgba(0, 0, 0, 0.2),
-    /* Subtle highlight on right */
-    5px -5px 20px rgba(255, 255, 255, 0.3);
-  overflow: hidden;
-  aspect-ratio: 5/7;
-  transform-style: preserve-3d;
-  transition: all 0.4s ease;
-}
-
-/* Add depth with light/shadow gradient */
-.card-preview-shadow::before {
-  content: '';
+/* Envelope behind the card */
+.card-envelope {
   position: absolute;
-  inset: 0;
-  background: linear-gradient(135deg,
-      rgba(255, 255, 255, 0.1) 0%,
-      transparent 50%,
-      rgba(0, 0, 0, 0.05) 100%);
-  pointer-events: none;
+  width: 85%;
+  aspect-ratio: 1 / 1.1;
+  /* Envelope shape */
+  background: #ffffff;
+  border-radius: 4px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+  transform: rotate(-3deg);
+  /* Slight natural offset */
   z-index: 1;
 }
 
-/* Paper texture overlay */
-.card-preview-shadow::after {
+.card-envelope::after {
   content: '';
   position: absolute;
-  inset: 0;
-  background:
-    linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.05) 50%, transparent 100%),
-    linear-gradient(0deg, transparent 0%, rgba(255, 255, 255, 0.03) 50%, transparent 100%);
-  pointer-events: none;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 50%;
+  background: linear-gradient(180deg, #fcfcfc 0%, transparent 100%);
+  clip-path: polygon(0 0, 100% 0, 50% 30%);
+  /* Subtle flap effect */
+}
+
+/* Flat Card Preview */
+.card-flat-preview {
+  position: relative;
   z-index: 2;
+  width: 100%;
+  max-width: 280px;
+  aspect-ratio: 5 / 7;
+  overflow: hidden;
 }
 
 .preview-image {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
   display: block;
 }
 
@@ -202,7 +185,7 @@
   padding: 40px 32px;
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 5px;
 }
 
 /* Card Header */
@@ -228,7 +211,7 @@
 
 .card-meta {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   gap: 12px;
   margin-top: 12px;
   flex-wrap: wrap;

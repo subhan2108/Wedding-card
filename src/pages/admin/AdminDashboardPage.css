@@ -390,3 +390,119 @@
         justify-content: center;
     }
 }
+
+/* Orders Section Styles */
+.orders-section {
+    background: white;
+    border-radius: 16px;
+    padding: 24px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    margin-top: 24px;
+    overflow-x: auto;
+}
+
+.orders-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+.orders-table th {
+    text-align: left;
+    padding: 16px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #718096;
+    border-bottom: 1px solid #e2e8f0;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.orders-table td {
+    padding: 16px;
+    font-size: 14px;
+    color: #2d3748;
+    border-bottom: 1px solid #f7fafc;
+    vertical-align: middle;
+}
+
+.orders-table tr:last-child td {
+    border-bottom: none;
+}
+
+.orders-table tr:hover td {
+    background-color: #f8fafc;
+}
+
+/* Status Badges */
+.status-badge {
+    padding: 6px 12px;
+    border-radius: 50px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: capitalize;
+    display: inline-block;
+}
+
+.status-pending {
+    background-color: #fffaf0;
+    color: #ed8936;
+    border: 1px solid #fbd38d;
+}
+
+.status-completed,
+.status-paid {
+    background-color: #f0fff4;
+    color: #48bb78;
+    border: 1px solid #9ae6b4;
+}
+
+.status-shipped {
+    background-color: #ebf8ff;
+    color: #4299e1;
+    border: 1px solid #bee3f8;
+}
+
+.status-cancelled {
+    background-color: #fff5f5;
+    color: #f56565;
+    border: 1px solid #feb2b2;
+}
+
+/* Text Utilities within table */
+.text-muted {
+    color: #718096;
+}
+
+.small {
+    font-size: 12px;
+}
+
+.fw-bold {
+    font-weight: 600;
+}
+
+.monospace {
+    font-family: 'Courier New', Courier, monospace;
+    color: #4a5568;
+}
+
+/* Buttons in table */
+.btn-sm {
+    padding: 6px 12px;
+    font-size: 12px;
+    border-radius: 6px;
+}
+
+.btn-primary {
+    background: #1e88e5;
+    color: white;
+    border: none;
+    cursor: pointer;
+    transition: transform 0.1s;
+}
+
+.btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(102, 126, 234, 0.3);
+}

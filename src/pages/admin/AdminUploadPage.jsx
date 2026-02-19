@@ -323,18 +323,22 @@ const AdminUploadPage = () => {
 
             let result;
             if (isEditing) {
-                result = adminService.updateTemplate(editId, templateData);
+                result = await adminService.updateTemplate(editId, templateData);
             } else {
-                result = adminService.addTemplate(templateData);
+                result = await adminService.addTemplate(templateData);
             }
+
+            console.log("AdminService result:", result); // DEBUG LOG
 
             if (result.success) {
                 alert(`Template ${isEditing ? 'updated' : 'added'} successfully`);
                 navigate('/admin/dashboard');
             } else {
-                setErrors({ submit: result.error });
+                console.error("Submission failed:", result.error); // DEBUG LOG
+                setErrors({ submit: typeof result.error === 'string' ? result.error : JSON.stringify(result.error) });
             }
         } catch (error) {
+            console.error("HandleSubmit error:", error); // DEBUG LOG
             setErrors({ submit: error.message });
         } finally {
             setIsSubmitting(false);

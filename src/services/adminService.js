@@ -1,16 +1,46 @@
-// Admin Service - Manages template CRUD operations
-// This will be easy to migrate to Supabase later
+
+import { supabase } from '../lib/supabaseClient';
 
 const STORAGE_KEY = 'wedding-templates';
 
+// Helper: Slugify function
+const slugify = (text) => {
+    return text
+        .toString()
+        .toLowerCase()
+        .replace(/\s+/g, '-')           // Replace spaces with -
+        .replace(/[^\w\-]+/g, '')       // Remove all non-word chars
+        .replace(/\-\-+/g, '-')         // Replace multiple - with single -
+        .replace(/^-+/, '')             // Trim - from start of text
+        .replace(/-+$/, '');            // Trim - from end of text
+};
+
 export const adminService = {
+    // Initialize default templates if storage is empty
+    initializeDefaultTemplates: (defaultTemplates) => {
+        const existing = localStorage.getItem(STORAGE_KEY);
+        if (!existing && defaultTemplates && defaultTemplates.length > 0) {
+
+            // Validate defaults
+            const validDefaults = defaultTemplates.map(t => ({
+                ...t,
+                id: t.id || slugify(t.name),
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+            }));
+
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(validDefaults));
+            console.log('Initialized default templates into localStorage');
+        }
+    },
+
     // Get all templates
     getTemplates: () => {
         try {
-            const data = localStorage.getItem(STORAGE_KEY);
-            return data ? JSON.parse(data) : [];
+            const templates = localStorage.getItem(STORAGE_KEY);
+            return templates ? JSON.parse(templates) : [];
         } catch (error) {
-            console.error('Error loading templates:', error);
+            console.error('Error parsing templates from localStorage', error);
             return [];
         }
     },
@@ -26,21 +56,26 @@ export const adminService = {
         try {
             const templates = adminService.getTemplates();
 
+            // Generate slug ID if not present
+            const newId = template.id || slugify(template.name);
+
             // Check for duplicate ID
-            if (templates.some(t => t.id === template.id)) {
-                throw new Error('Template with this ID already exists');
+            if (templates.some(t => t.id === newId)) {
+                return { success: false, error: 'Template with this name/ID already exists' };
             }
 
-            templates.push({
+            const newTemplate = {
                 ...template,
+                id: newId,
                 createdAt: new Date().toISOString(),
                 updatedAt: new Date().toISOString()
-            });
+            };
 
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(templates));
-            return { success: true, template };
+            const updatedTemplates = [newTemplate, ...templates];
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedTemplates));
+            return { success: true, template: newTemplate };
         } catch (error) {
-            console.error('Error adding template:', error);
+            console.error('Error adding template', error);
             return { success: false, error: error.message };
         }
     },
@@ -52,19 +87,20 @@ export const adminService = {
             const index = templates.findIndex(t => t.id === id);
 
             if (index === -1) {
-                throw new Error('Template not found');
+                return { success: false, error: 'Template not found' };
             }
 
-            templates[index] = {
+            const updatedTemplate = {
                 ...templates[index],
                 ...updates,
                 updatedAt: new Date().toISOString()
             };
 
+            templates[index] = updatedTemplate;
             localStorage.setItem(STORAGE_KEY, JSON.stringify(templates));
-            return { success: true, template: templates[index] };
+            return { success: true, template: updatedTemplate };
         } catch (error) {
-            console.error('Error updating template:', error);
+            console.error('Error updating template', error);
             return { success: false, error: error.message };
         }
     },
@@ -73,88 +109,53 @@ export const adminService = {
     deleteTemplate: (id) => {
         try {
             const templates = adminService.getTemplates();
-            const filtered = templates.filter(t => t.id !== id);
+            const filteredTemplates = templates.filter(t => t.id !== id);
 
-            if (filtered.length === templates.length) {
-                throw new Error('Template not found');
+            if (templates.length === filteredTemplates.length) {
+                return { success: false, error: 'Template not found' };
             }
 
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(filteredTemplates));
             return { success: true };
         } catch (error) {
-            console.error('Error deleting template:', error);
+            console.error('Error deleting template', error);
             return { success: false, error: error.message };
         }
     },
 
-    // Validate template structure
-    validateTemplate: (template) => {
-        const required = ['id', 'name', 'width', 'height', 'layers'];
-        const missing = required.filter(field => !template.hasOwnProperty(field));
+    // Generate slug helper
+    generateSlug: (name) => slugify(name),
 
-        if (missing.length > 0) {
-            return {
-                valid: false,
-                error: `Missing required fields: ${missing.join(', ')}`
-            };
-        }
-
-        if (!Array.isArray(template.layers)) {
-            return {
-                valid: false,
-                error: 'Layers must be an array'
-            };
-        }
-
-        return { valid: true };
-    },
-
-    // Generate slug from name
-    generateSlug: (name) => {
-        return name
-            .toLowerCase()
-            .replace(/[^a-z0-9]+/g, '-')
-            .replace(/^-+|-+$/g, '');
-    },
-
-    // Get templates by category
-    getTemplatesByCategory: (category) => {
-        const templates = adminService.getTemplates();
-        return templates.filter(t => t.category === category);
-    },
-
-    // Get all categories
-    getCategories: () => {
-        const templates = adminService.getTemplates();
-        const categories = new Set(templates.map(t => t.category).filter(Boolean));
-        return Array.from(categories);
-    },
-
-    // Initialize with default templates (run once)
-    initializeDefaultTemplates: (defaultTemplates) => {
-        const existing = adminService.getTemplates();
-        if (existing.length === 0) {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(defaultTemplates));
-        }
-    },
-
-    // Export all templates as JSON
-    exportTemplates: () => {
-        const templates = adminService.getTemplates();
-        return JSON.stringify(templates, null, 2);
-    },
-
-    // Import templates from JSON
-    importTemplates: (jsonString) => {
+    // Fetch all orders from Supabase
+    getOrders: async () => {
         try {
-            const templates = JSON.parse(jsonString);
-            if (!Array.isArray(templates)) {
-                throw new Error('Invalid format: expected array of templates');
-            }
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(templates));
-            return { success: true };
+            const { data, error } = await supabase
+                .from('orders')
+                .select('*')
+                .order('created_at', { ascending: false });
+
+            if (error) throw error;
+            return data;
         } catch (error) {
-            return { success: false, error: error.message };
+            console.error('Error fetching orders:', error);
+            return [];
+        }
+    },
+
+    // Fetch single order by ID
+    getOrderById: async (id) => {
+        try {
+            const { data, error } = await supabase
+                .from('orders')
+                .select('*')
+                .eq('id', id)
+                .single();
+
+            if (error) throw error;
+            return data;
+        } catch (error) {
+            console.error('Error fetching order:', error);
+            return null;
         }
     }
 };

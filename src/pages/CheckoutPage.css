@@ -380,3 +380,232 @@
         grid-template-columns: 1fr 1fr;
     }
 }
+
+/* --- Added Payment UI Styles --- */
+
+/* Payment Option Active State */
+.payment-option.active {
+    border-color: #1e88e5;
+    background: #eff6ff;
+    color: #1e88e5;
+    box-shadow: 0 4px 12px rgba(30, 136, 229, 0.15);
+}
+
+.payment-icon {
+    display: block;
+    margin: 0 auto 0.5rem;
+    color: inherit;
+}
+
+/* Payment Details View */
+.payment-details-view {
+    margin-top: 1.5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid #e5e7eb;
+    margin-bottom: 1.5rem;
+}
+
+.payment-box {
+    background: #f8fafc;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 1.5rem;
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Stripe Mock */
+.stripe-mock {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.stripe-row-mock {
+    display: flex;
+    gap: 1rem;
+}
+
+.stripe-field {
+    flex: 1;
+}
+
+.stripe-field label {
+    display: block;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #6b7280;
+    margin-bottom: 0.35rem;
+    text-transform: uppercase;
+}
+
+.stripe-input-mock {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    background: #ffffff;
+    color: #374151;
+    font-family: monospace;
+    font-size: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.02);
+}
+
+.payment-note {
+    font-size: 0.875rem;
+    color: #10b981;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+    font-weight: 500;
+}
+
+/* UPI Box */
+.upi-content {
+    display: flex;
+    align-items: flex-start;
+    gap: 2rem;
+}
+
+.upi-qr {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 1.25rem;
+    background: white;
+    border: 2px dashed #cbd5e1;
+    border-radius: 12px;
+}
+
+.upi-details {
+    flex: 1;
+}
+
+.upi-details p {
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+    color: #374151;
+}
+
+.upi-details .small-text {
+    font-size: 0.8rem;
+    color: #6b7280;
+    margin-top: 0.75rem;
+    font-weight: 400;
+    font-style: italic;
+}
+
+.copy-field {
+    display: flex;
+    align-items: center;
+    background: #ffffff;
+    padding: 0.75rem 1rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    justify-content: space-between;
+    margin-top: 0.5rem;
+}
+
+.btn-copy {
+    background: none;
+    border: none;
+    color: #1e88e5;
+    font-weight: 600;
+    cursor: pointer;
+    font-size: 0.875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* COD Box */
+.cod-content {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    text-align: left;
+}
+
+.cod-icon-large {
+    color: #1e88e5;
+    background: #eff6ff;
+    padding: 12px;
+    border-radius: 50%;
+    box-sizing: content-box;
+    border: 1px solid #dbeafe;
+}
+
+.cod-content h4 {
+    margin: 0 0 0.5rem 0;
+    color: #1e293b;
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+.cod-content p {
+    color: #64748b;
+    font-size: 0.95rem;
+    line-height: 1.5;
+    margin: 0;
+}
+
+/* Response */
+@media (max-width: 640px) {
+    .upi-content {
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        gap: 1.5rem;
+    }
+
+    .cod-content {
+        flex-direction: column;
+        text-align: center;
+        gap: 1rem;
+    }
+
+    .payment-options {
+        grid-template-columns: repeat(3, 1fr) !important;
+        /* Force 3 columns on mobile if possible, or scroll */
+    }
+
+    .payment-option {
+        padding: 0.5rem;
+    }
+}
+
+/* Stripe Elements */
+.stripe-element-container {
+    padding: 12px;
+    background: #ffffff;
+    border: 2px solid #e5e7eb;
+    border-radius: 12px;
+    margin-bottom: 1rem;
+    transition: all 0.3s ease;
+}
+
+.stripe-element-container:focus-within {
+    border-color: #1e88e5;
+    box-shadow: 0 0 0 3px rgba(30, 136, 229, 0.1);
+}
+
+.StripeElement {
+    width: 100%;
+    padding: 4px 0;
+}

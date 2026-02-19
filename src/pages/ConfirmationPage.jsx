@@ -1,5 +1,6 @@
 import { CheckCircle, Crown } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { Skeleton, SkeletonText } from "../components/common/Skeleton";
 import "./ConfirmationPage.css";
 
 
@@ -8,9 +9,50 @@ const ConfirmationPage = ({
     checkoutData,
     setCurrentView,
     setCart,
-    setCheckoutData
+    setCheckoutData,
+    loading
 }) => {
     const navigate = useNavigate();
+
+    if (loading) {
+        return (
+            <div className="page-container confirmation-page">
+                <div className="confirmation-container">
+                    <div className="confirmation-card">
+                        <div className="success-icon" style={{ display: 'flex', justifyContent: 'center', marginBottom: '1.5rem' }}>
+                            <Skeleton width="64px" height="64px" borderRadius="50%" />
+                        </div>
+
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '2rem' }}>
+                            <SkeletonText lines={1} style={{ height: '32px', width: '250px', marginBottom: '1rem' }} />
+                            <SkeletonText lines={2} style={{ width: '80%', textAlign: 'center' }} />
+                        </div>
+
+                        {/* Final Preview Skeleton */}
+                        <div className="final-preview" style={{ display: 'flex', justifyContent: 'center', marginBottom: '2rem' }}>
+                            <Skeleton width="280px" height="400px" borderRadius="8px" />
+                        </div>
+
+                        {/* Order Details Skeleton */}
+                        <div className="order-details-card" style={{ width: '100%', marginBottom: '2rem', padding: '1.5rem', background: '#f8f9fa', borderRadius: '12px' }}>
+                            <SkeletonText lines={1} style={{ height: '20px', width: '150px', marginBottom: '1rem' }} />
+                            <div className="details-list">
+                                <SkeletonText lines={1} style={{ marginBottom: '8px' }} />
+                                <SkeletonText lines={1} style={{ marginBottom: '8px' }} />
+                                <SkeletonText lines={1} style={{ marginBottom: '8px' }} />
+                                <SkeletonText lines={1} />
+                            </div>
+                        </div>
+
+                        <div style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
+                            <Skeleton width="200px" height="48px" borderRadius="30px" />
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
     const item = cart[0];
 
     const totalPrice =

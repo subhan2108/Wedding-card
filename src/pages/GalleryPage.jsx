@@ -1,6 +1,7 @@
-import { Users, Star, Crown, Flower2 } from "lucide-react";
+import { Users, Star, Crown, Flower2, ChevronDown, Check } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
+import { SkeletonCard } from "../components/common/Skeleton";
 import "./GalleryPage.css";
 
 const GalleryCard = ({ card, onCustomize }) => {
@@ -61,18 +62,13 @@ const GalleryCard = ({ card, onCustomize }) => {
                             </div>
                         )}
                     </div>
-
-                    {/* Hover */}
-                    <div className="card-hover-overlay">
-                        <button className="btn btn-primary">
-                            Customize
-                        </button>
-                    </div>
                 </div>
 
                 <div className="card-details">
-                    <div className="card-header">
-                        <h3 className="card-name">{card.name}</h3>
+                    <h3 className="card-name">{card.name}</h3>
+                    <p className="card-tagline">{card.theme || card.category}</p>
+
+                    <div className="card-meta">
                         <div className="color-dots-container">
                             {variants.map((variant, idx) => (
                                 <div
@@ -84,9 +80,6 @@ const GalleryCard = ({ card, onCustomize }) => {
                                 />
                             ))}
                         </div>
-                    </div>
-                    <div className="card-footer">
-                        <span className="card-theme">{card.theme || card.category}</span>
                         <span className="card-price">
                             ${(card.price || 0).toFixed(2)}
                         </span>
@@ -96,6 +89,7 @@ const GalleryCard = ({ card, onCustomize }) => {
         </div>
     );
 };
+
 
 const CATEGORIES = {
     'Wedding': ['Floral', 'Modern', 'Minimal', 'Premium', 'Traditional', 'Vintage', 'Boho', 'Rustic', 'Classic'],
@@ -116,22 +110,53 @@ const GalleryPage = ({
     setActiveLanguage,
     activeSymbol,
     setActiveSymbol,
-    handleCustomize
+    handleCustomize,
+    loading
 }) => {
     const navigate = useNavigate();
+    const [activeDropdown, setActiveDropdown] = useState(null);
+
+    const toggleDropdown = (name) => {
+        if (activeDropdown === name) setActiveDropdown(null);
+        else setActiveDropdown(name);
+    };
+
+    // Close dropdowns when clicking outside (simple implementation: click on page closes it)
+    // For specialized behavior, a click listener on document body would be better, but this suffices for now if we add an overlay or handle it in the container.
+    // Actually, let's just use the toggle logic on the button.
+
+    const languages = ['All', 'English', 'Hindi', 'Urdu', 'Mixed'];
+    const symbols = ['All', 'Om', 'Ganesha', 'Moon', 'Floral', 'Bismillah', 'Khanda', 'Cross'];
 
     // Determine available main categories from data + constant
     const mainCategories = ['All', ...Object.keys(CATEGORIES)];
 
-    // Determine subcategories based on active main category
+    // Determine subcategories based on active main category (remove 'All' prefix)
     const subCategories = activeCategory && activeCategory !== 'All'
-        ? ['All', ...(CATEGORIES[activeCategory] || [])]
+        ? (CATEGORIES[activeCategory] || [])
         : [];
 
     const onCardCustomize = (card, variantIndex) => {
         handleCustomize(card);
         navigate("/customize", { state: { initialVariantIndex: variantIndex } });
     };
+
+    // Add scroll shadow effect
+    useEffect(() => {
+        const handleScroll = () => {
+            const filter = document.querySelector(".filter-section");
+            if (!filter) return;
+
+            if (window.scrollY > 10) {
+                filter.classList.add("scrolled");
+            } else {
+                filter.classList.remove("scrolled");
+            }
+        };
+
+        window.addEventListener("scroll", handleScroll);
+        return () => window.removeEventListener("scroll", handleScroll);
+    }, []);
 
     return (
         <div className="gallery-page">
@@ -154,87 +179,103 @@ const GalleryPage = ({
             {/* Filters */}
             <section className="filter-section">
                 <div className="container">
-                    {/* Main Categories */}
-                    <div className="filter-container main-categories">
-                        {mainCategories.map((cat) => (
-                            <button
-                                key={cat}
-                                onClick={() => {
-                                    setActiveCategory(cat);
-                                    setActiveSubCategory('All'); // Reset subcategory
-                                }}
-                                className={`filter-btn ${activeCategory === cat ? "active" : ""}`}
-                            >
-                                {cat}
-                            </button>
-                        ))}
+                    <div className="filter-row">
+                        {/* Main Categories (Left) */}
+                        <div className="filter-container main-categories">
+                            {mainCategories.map((cat) => (
+                                <button
+                                    key={cat}
+                                    onClick={() => {
+                                        setActiveCategory(cat);
+                                        setActiveSubCategory('All'); // Reset subcategory
+                                    }}
+                                    className={`filter-btn ${activeCategory === cat ? "active" : ""}`}
+                                >
+                                    {cat}
+                                </button>
+                            ))}
+                        </div>
+
+                        {/* Dropdown Filters (Right) */}
+                        <div className="filter-actions">
+                            {/* Language Dropdown */}
+                            <div className="dropdown-wrapper">
+                                <button
+                                    className={`filter-dropdown-btn ${activeDropdown === 'language' ? 'active' : ''}`}
+                                    onClick={() => toggleDropdown('language')}
+                                >
+                                    <span>{activeLanguage === 'All' ? 'Language' : activeLanguage}</span>
+                                    <ChevronDown className={`dropdown-arrow ${activeDropdown === 'language' ? 'rotate' : ''}`} size={16} />
+                                </button>
+                                {activeDropdown === 'language' && (
+                                    <div className="dropdown-menu">
+                                        {languages.map((lang) => (
+                                            <div
+                                                key={lang}
+                                                className={`dropdown-item ${activeLanguage === lang ? 'selected' : ''}`}
+                                                onClick={() => {
+                                                    setActiveLanguage(lang);
+                                                    setActiveDropdown(null);
+                                                }}
+                                            >
+                                                <span>{lang}</span>
+                                                {activeLanguage === lang && <Check size={14} />}
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Symbol Dropdown */}
+                            <div className="dropdown-wrapper">
+                                <button
+                                    className={`filter-dropdown-btn ${activeDropdown === 'symbol' ? 'active' : ''}`}
+                                    onClick={() => toggleDropdown('symbol')}
+                                >
+                                    <span>{activeSymbol === 'All' ? 'Symbols' : activeSymbol}</span>
+                                    <ChevronDown className={`dropdown-arrow ${activeDropdown === 'symbol' ? 'rotate' : ''}`} size={16} />
+                                </button>
+                                {activeDropdown === 'symbol' && (
+                                    <div className="dropdown-menu right-aligned">
+                                        {symbols.map((sym) => (
+                                            <div
+                                                key={sym}
+                                                className={`dropdown-item ${activeSymbol === sym ? 'selected' : ''}`}
+                                                onClick={() => {
+                                                    setActiveSymbol(sym);
+                                                    setActiveDropdown(null);
+                                                }}
+                                            >
+                                                <span>{sym}</span>
+                                                {activeSymbol === sym && <Check size={14} />}
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
                     </div>
 
-                    {/* Sub Categories (conditionally rendered) */}
+                    {/* Sub Categories (Row 2 if active) */}
                     {activeCategory !== 'All' && subCategories.length > 0 && (
-                        <div className="filter-container sub-categories" style={{ marginTop: '16px', justifyContent: 'center', gap: '8px' }}>
+                        <div className="filter-container sub-categories">
+                            <button
+                                onClick={() => setActiveSubCategory('All')}
+                                className={`filter-btn sm ${activeSubCategory === 'All' ? "active" : ""}`}
+                            >
+                                All
+                            </button>
                             {subCategories.map((sub) => (
                                 <button
                                     key={sub}
                                     onClick={() => setActiveSubCategory(sub)}
                                     className={`filter-btn sm ${activeSubCategory === sub ? "active" : ""}`}
-                                    style={{
-                                        padding: '6px 16px',
-                                        fontSize: '0.9rem',
-                                        backgroundColor: activeSubCategory === sub ? 'var(--primary)' : 'var(--bg-secondary)',
-                                        color: activeSubCategory === sub ? 'white' : 'var(--text-secondary)',
-                                        border: '1px solid var(--border-soft)'
-                                    }}
                                 >
                                     {sub}
                                 </button>
                             ))}
                         </div>
                     )}
-
-                    {/* Language Filter */}
-                    <div className="filter-container language-filters" style={{ marginTop: '16px', justifyContent: 'center', gap: '8px', display: 'flex' }}>
-                        <span style={{ alignSelf: 'center', fontSize: '0.9rem', color: 'var(--text-secondary)', marginRight: '8px' }}>Language:</span>
-                        {['All', 'English', 'Hindi', 'Urdu', 'Mixed'].map((lang) => (
-                            <button
-                                key={lang}
-                                onClick={() => setActiveLanguage(lang)}
-                                className={`filter-btn sm ${activeLanguage === lang ? "active" : ""}`}
-                                style={{
-                                    padding: '6px 16px',
-                                    fontSize: '0.9rem',
-                                    backgroundColor: activeLanguage === lang ? 'var(--primary-dark)' : 'transparent',
-                                    color: activeLanguage === lang ? 'white' : 'var(--text-secondary)',
-                                    border: '1px solid var(--border-soft)',
-                                    borderRadius: '20px'
-                                }}
-                            >
-                                {lang}
-                            </button>
-                        ))}
-                    </div>
-
-                    {/* Symbol Filter */}
-                    <div className="filter-container symbol-filters" style={{ marginTop: '16px', justifyContent: 'center', gap: '8px', display: 'flex' }}>
-                        <span style={{ alignSelf: 'center', fontSize: '0.9rem', color: 'var(--text-secondary)', marginRight: '8px' }}>Symbols:</span>
-                        {['All', 'Om', 'Ganesha', 'Moon', 'Floral', 'Bismillah', 'Khanda', 'Cross'].map((sym) => (
-                            <button
-                                key={sym}
-                                onClick={() => setActiveSymbol(sym)}
-                                className={`filter-btn sm ${activeSymbol === sym ? "active" : ""}`}
-                                style={{
-                                    padding: '6px 16px',
-                                    fontSize: '0.9rem',
-                                    backgroundColor: activeSymbol === sym ? 'var(--primary-dark)' : 'transparent',
-                                    color: activeSymbol === sym ? 'white' : 'var(--text-secondary)',
-                                    border: '1px solid var(--border-soft)',
-                                    borderRadius: '20px'
-                                }}
-                            >
-                                {sym}
-                            </button>
-                        ))}
-                    </div>
                 </div>
             </section>
 
@@ -268,17 +309,23 @@ const GalleryPage = ({
             <section className="cards-section">
                 <div className="container">
                     <div className="cards-grid">
-                        {filteredCards.map((card) => (
-                            <GalleryCard
-                                key={card.id}
-                                card={card}
-                                onCustomize={onCardCustomize}
-                            />
-                        ))}
+                        {loading ? (
+                            Array.from({ length: 8 }).map((_, i) => (
+                                <SkeletonCard key={i} />
+                            ))
+                        ) : (
+                            filteredCards.map((card) => (
+                                <GalleryCard
+                                    key={card.id}
+                                    card={card}
+                                    onCustomize={onCardCustomize}
+                                />
+                            ))
+                        )}
                     </div>
 
                     {/* Empty State */}
-                    {filteredCards.length === 0 && (
+                    {filteredCards.length === 0 && !loading && (
                         <div className="empty-state">
                             <Flower2 className="empty-icon" />
                             <h3 className="empty-title">No designs found</h3>
@@ -297,6 +344,30 @@ const GalleryPage = ({
                             </button>
                         </div>
                     )}
+                </div>
+            </section>
+
+            {/* Trust Strip */}
+            <section className="trust-strip-section">
+                <div className="container">
+                    <div className="trust-strip-content">
+                        <div className="trust-strip-item">
+                            <Check size={16} />
+                            <span>Secure Payment</span>
+                        </div>
+                        <div className="trust-strip-item">
+                            <Check size={16} />
+                            <span>Instant Download</span>
+                        </div>
+                        <div className="trust-strip-item">
+                            <Check size={16} />
+                            <span>Premium Quality</span>
+                        </div>
+                        <div className="trust-strip-item">
+                            <Check size={16} />
+                            <span>50,000+ Happy Couples</span>
+                        </div>
+                    </div>
                 </div>
             </section>
         </div>

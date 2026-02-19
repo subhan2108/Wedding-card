@@ -1,6 +1,10 @@
+
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import { ReactTransliterate } from 'react-transliterate';
+import 'react-transliterate/dist/index.css';
 import { adminService } from '../services/adminService';
+import { useAuth } from '../context/AuthContext'; // Import useAuth
 import Canvas from '../components/Editor/Canvas';
 import {
     ArrowLeft as BiArrowLeft,
@@ -35,11 +39,13 @@ import jsPDF from 'jspdf';
 import { storageService } from '../services/storageService';
 import { suggestionService } from '../services/suggestionService';
 import ContextMenu from '../components/Editor/ContextMenu';
+import { Skeleton, SkeletonText } from '../components/common/Skeleton';
 import './EditorPage.css';
 
-const EditorPage = ({ setCart, customization }) => {
+const EditorPage = ({ setCart, customization, loading }) => {
     const { cardName } = useParams();
     const navigate = useNavigate();
+    const { user, openAuthModal } = useAuth();
 
     const [template, setTemplate] = useState(null);
     const [layers, setLayers] = useState([]);
@@ -59,6 +65,7 @@ const EditorPage = ({ setCart, customization }) => {
     const [history, setHistory] = useState([]);
     const [historyIndex, setHistoryIndex] = useState(-1);
     const [editorTheme, setEditorTheme] = useState('light');
+    const [inputLanguage, setInputLanguage] = useState('en'); // 'en' or 'hi'
 
     // Multi-View Support
     const [activeViewIndex, setActiveViewIndex] = useState(0);
@@ -99,6 +106,18 @@ const EditorPage = ({ setCart, customization }) => {
                 };
             }
 
+            // Handle order view/edit scenario
+            const searchParams = new URLSearchParams(location.search);
+            const orderId = searchParams.get('orderId');
+
+            if (orderId) {
+                // Fetch the order data to get user's design
+                // NOTE: In a real app, this should probably be done via a service or effect 
+                // that runs when the component mounts, not inside this template logic block.
+                // However, for immediate integration, we'll try to fetch it here or handle it.
+                // A better approach: distinct effect for initial load.
+            }
+
             setTemplate(foundTemplate);
 
             // Initialize Multi-View State
@@ -106,18 +125,97 @@ const EditorPage = ({ setCart, customization }) => {
                 ? foundTemplate.views.map(v => v ? v.layers || [] : [])
                 : [foundTemplate.layers || foundTemplate.defaultFields || []];
 
-            // Ensure at least 4 slots if we want fixed slots, or just dynamic. 
-            // Admin saves mixed array? No, Admin saves generic array.
-            // Let's stick to what's in template.views
 
             setViewLayers(initialViews);
             setLayers(initialViews[0] || []);
-            setActiveViewIndex(0);
-
-            // Legacy support or override from storage could go here
-            // For now, let's trust the template data first for the structure
+            setActiveViewIndex(0); // Ensure we start at view 0
         }
-    }, [cardName, location.state]);
+    }, [cardName, location.state, location.search]);
+
+    // Effect to load design from Order ID if present
+    useEffect(() => {
+        const fetchOrderDesign = async () => {
+            const searchParams = new URLSearchParams(location.search);
+            const orderId = searchParams.get('orderId');
+
+            if (orderId && template) {
+                try {
+                    const orderData = await adminService.getOrderById(orderId);
+
+                    if (orderData && orderData.design_data) {
+                        let savedDesign = orderData.design_data;
+
+                        if (typeof savedDesign === 'string') {
+                            try { savedDesign = JSON.parse(savedDesign); } catch (e) { /* ignore */ }
+                        }
+
+                        // Handle structure: sometimes savedDesign is the customization object directly,
+                        // sometimes it might be nested
+                        // Check for template overrides (background, dimensions, etc.) in the saved design
+                        // This handles cases where a variant (different color/bg) was used
+                        if (template) {
+                            const updates = {};
+                            // Check top-level properties if savedDesign is the full cart item
+                            if (savedDesign.backgroundUrl) updates.backgroundUrl = savedDesign.backgroundUrl;
+                            if (savedDesign.image) updates.image = savedDesign.image; // Layout image
+                            if (savedDesign.previewImage) updates.previewImage = savedDesign.previewImage;
+                            if (savedDesign.colorHex) updates.colorHex = savedDesign.colorHex;
+                            if (savedDesign.width) updates.width = savedDesign.width;
+                            if (savedDesign.height) updates.height = savedDesign.height;
+
+                            if (Object.keys(updates).length > 0) {
+                                console.log("Restoring template overrides from order:", updates);
+                                setTemplate(prev => ({ ...prev, ...updates }));
+                            }
+                        }
+
+                        let customizationBytes = savedDesign;
+                        if (savedDesign.customization) {
+                            customizationBytes = savedDesign.customization;
+                        }
+
+                        const savedLayers = customizationBytes.layers;
+                        const savedViewLayers = customizationBytes.viewLayers;
+
+                        if (savedLayers && Array.isArray(savedLayers)) {
+                            console.log("Loading layers from order:", savedLayers.length);
+
+                            // If viewLayers (multi-view history) exists, restore it.
+                            if (savedViewLayers && Array.isArray(savedViewLayers)) {
+                                setViewLayers(savedViewLayers);
+                                // Force start at View 0 to ensure background/layers alignment
+                                if (savedViewLayers[0]) {
+                                    setLayers(savedViewLayers[0]);
+                                } else {
+                                    setLayers(savedLayers);
+                                }
+                                setActiveViewIndex(0);
+                            } else {
+                                // If legacy single view, sync it
+                                setLayers(savedLayers);
+                                setViewLayers(prev => {
+                                    const newV = [...prev];
+                                    newV[0] = savedLayers;
+                                    return newV;
+                                });
+                            }
+                        }
+
+                        if (customizationBytes.fieldValues) {
+                            setFieldValues(customizationBytes.fieldValues);
+                        }
+                    }
+                } catch (e) {
+                    console.error("Error loading order design:", e);
+                }
+            }
+        };
+
+        // Only run if template is firmly loaded (so we have base dimensions etc)
+        if (template) {
+            fetchOrderDesign();
+        }
+    }, [location.search, template?.id]); // Depend on template.id so it re-runs when template loads
 
     // Update viewLayers whenever current layers change (debounce or sync?)
     // Better to sync on specific actions or just keep them in sync?
@@ -181,7 +279,7 @@ const EditorPage = ({ setCart, customization }) => {
     }, [saveToHistory, layers]);
 
     const handleAddLayer = useCallback((layerData = null) => {
-        const newId = `text-${Date.now()}`;
+        const newId = `text - ${Date.now()} `;
         const newLayer = layerData || {
             id: newId,
             text: "Double click to edit",
@@ -242,7 +340,7 @@ const EditorPage = ({ setCart, customization }) => {
         if (layerToDup) {
             handleAddLayer({
                 ...layerToDup,
-                id: `text-${Date.now()}`,
+                id: `text - ${Date.now()} `,
                 x: layerToDup.x + 20,
                 y: layerToDup.y + 20,
                 zIndex: layers.length + 1
@@ -354,7 +452,7 @@ const EditorPage = ({ setCart, customization }) => {
             fieldValues
         });
         if (result.success) {
-            alert(`Design saved successfully at ${new Date(result.timestamp).toLocaleTimeString()}`);
+            alert(`Design saved successfully at ${new Date(result.timestamp).toLocaleTimeString()} `);
         } else {
             alert('Error saving design: ' + (result.error || 'Unknown error'));
         }
@@ -436,7 +534,7 @@ const EditorPage = ({ setCart, customization }) => {
                     const layer = JSON.parse(copiedLayer);
                     handleAddLayer({
                         ...layer,
-                        id: `text-${Date.now()}`,
+                        id: `text - ${Date.now()} `,
                         x: layer.x + 20,
                         y: layer.y + 20,
                         zIndex: layers.length + 1
@@ -484,6 +582,11 @@ const EditorPage = ({ setCart, customization }) => {
 
 
     const handleAddToCart = async () => {
+        if (!user) {
+            openAuthModal();
+            return;
+        }
+
         if (!setCart) {
             console.error("setCart function not provided to EditorPage");
         }
@@ -519,11 +622,16 @@ const EditorPage = ({ setCart, customization }) => {
             }
         }
 
+        // Ensure current layers are saved to viewLayers before checkout
+        const currentViewLayers = [...viewLayers];
+        currentViewLayers[activeViewIndex] = layers;
+
         const cartItem = {
             ...template,
             image: previewImage, // This will be the Edited PNG
             customization: {
                 layers: layers,
+                viewLayers: currentViewLayers, // Save all views
                 fieldValues: fieldValues,
                 quantity: customization?.quantity || 100 // Use passed quantity or default
             },
@@ -548,24 +656,70 @@ const EditorPage = ({ setCart, customization }) => {
             template.fonts.forEach(font => {
                 if (document.fonts) {
                     document.fonts.load(font).then(() => {
-                        console.log(`Font loaded: ${font}`);
+                        console.log(`Font loaded: ${font} `);
                     });
                 }
             });
         }
     }, [template]);
 
-    if (!template) return <div className="loading-screen">Loading template...</div>;
+    if (loading || !template) {
+        return (
+            <div className={`editor-page theme-${editorTheme}`}>
+                <div className="editor-header" style={{ padding: '0.5rem 1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: '60px', borderBottom: '1px solid #eee' }}>
+                    <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                        <Skeleton width="80px" height="36px" borderRadius="20px" />
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                            <Skeleton width="150px" height="20px" />
+                            <Skeleton width="100px" height="14px" />
+                        </div>
+                    </div>
+                    <div style={{ display: 'flex', gap: '1rem' }}>
+                        <Skeleton width="90px" height="36px" borderRadius="8px" />
+                        <Skeleton width="90px" height="36px" borderRadius="8px" />
+                        <Skeleton width="140px" height="36px" borderRadius="20px" />
+                    </div>
+                </div>
+
+                <div className="editor-layout" style={{ display: 'flex', height: 'calc(100vh - 60px)', overflow: 'hidden' }}>
+                    {/* Left Sidebar Skeleton */}
+                    <div className="editor-sidebar-left" style={{ width: '320px', padding: '1.5rem', borderRight: '1px solid #eee', background: '#fff' }}>
+                        <Skeleton width="50%" height="24px" style={{ marginBottom: '24px' }} />
+
+                        <div style={{ marginBottom: '32px' }}>
+                            <Skeleton width="40%" height="16px" style={{ marginBottom: '12px' }} />
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                                <Skeleton height="80px" borderRadius="12px" />
+                                <Skeleton height="80px" borderRadius="12px" />
+                                <Skeleton height="80px" borderRadius="12px" />
+                                <Skeleton height="80px" borderRadius="12px" />
+                            </div>
+                        </div>
+
+                        <div>
+                            <Skeleton width="40%" height="16px" style={{ marginBottom: '12px' }} />
+                            <Skeleton height="120px" borderRadius="12px" />
+                        </div>
+                    </div>
+
+                    {/* Canvas Skeleton */}
+                    <div className="editor-canvas-container" style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', backgroundColor: '#f8f9fa', padding: '40px' }}>
+                        <Skeleton width="450px" height="640px" borderRadius="4px" style={{ boxShadow: '0 4px 20px rgba(0,0,0,0.05)' }} />
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     const selectedLayer = layers.find(l => l.id === selectedLayerId);
 
     return (
-        <div className={`editor-page theme-${editorTheme} ${isPreviewMode ? 'preview-active' : ''}`}>
-            {/* Top Navigation Header */}
+        <div className={`editor - page theme - ${editorTheme} ${isPreviewMode ? 'preview-active' : ''} `}>
+            {/* 1️⃣ Editor Header (Top Navigation) */}
             {!isPreviewMode && (
                 <div className="editor-header">
                     <div className="header-left">
-                        <button onClick={() => navigate('/gallery')} className="btn btn-outline" title="Back to Gallery">
+                        <button onClick={() => navigate('/gallery')} className="btn-back-pill" title="Back to Gallery">
                             <BiArrowLeft size={18} />
                             <span>Back</span>
                         </button>
@@ -573,21 +727,12 @@ const EditorPage = ({ setCart, customization }) => {
                             <h2>{template.name}</h2>
                         </div>
 
-                        {/* Theme Selector */}
-                        <div className="theme-selector" style={{ marginLeft: '16px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <div className="theme-selector" style={{ marginLeft: '16px' }}>
                             <select
                                 value={editorTheme}
                                 onChange={(e) => setEditorTheme(e.target.value)}
-                                style={{
-                                    padding: '5px 8px',
-                                    borderRadius: '4px',
-                                    fontSize: '12px',
-                                    fontWeight: '500',
-                                    color: 'var(--text-primary)',
-                                    background: 'var(--bg-panel)',
-                                    border: '1px solid var(--border-soft)',
-                                    cursor: 'pointer'
-                                }}
+                                className="sidebar-select"
+                                style={{ width: 'auto', padding: '4px 12px' }}
                             >
                                 <option value="light">☀️ Light</option>
                                 <option value="dark">🌑 Dark</option>
@@ -596,35 +741,36 @@ const EditorPage = ({ setCart, customization }) => {
                     </div>
 
                     <div className="header-actions">
-                        <button onClick={() => setIsPreviewMode(true)} className="btn btn-text" title="Preview Mode">
+                        <div className="autosave-badge">
+                            <div className="dot-green"></div>
+                            <span>Auto-saved</span>
+                        </div>
+                        <div className="vertical-divider sm"></div>
+                        <button onClick={() => setIsPreviewMode(true)} className="btn-text" title="Preview Mode">
                             <BiEye size={18} />
                             <span>Preview</span>
                         </button>
-                        <button onClick={handleSave} className="btn btn-text">
-                            <BiCloudCheck size={18} />
+                        <button onClick={handleSave} className="btn-text">
+                            <BiSave size={18} />
                             <span>Save</span>
                         </button>
-                        <div className="vertical-divider sm"></div>
-                        <button onClick={handleExportPNG} className="btn btn-outline btn-sm">
-                            <BiDownload size={14} /> PNG
+                        <button onClick={handleExportPNG} className="btn-text">
+                            <BiDownload size={16} /> PNG
                         </button>
-                        <button onClick={handleExportPDF} className="btn btn-outline btn-sm">
-                            <BiDownload size={14} /> PDF
+                        <button onClick={handleExportPDF} className="btn-text">
+                            <BiDownload size={16} /> PDF
                         </button>
-                        <button onClick={handleAddToCart} className="btn btn-primary checkout-btn">
-                            <BiBagCheck size={18} style={{ marginRight: '6px' }} />
+                        <button onClick={handleAddToCart} className="checkout-pill">
+                            <BiBagCheck size={20} />
                             <span>Checkout</span>
                         </button>
                     </div>
                 </div>
             )}
 
-            {/* Premium Preview Exit Button (Phase 8) */}
+            {/* Exit Preview Button */}
             {isPreviewMode && (
-                <button
-                    className="exit-preview-btn"
-                    onClick={() => setIsPreviewMode(false)}
-                >
+                <button className="exit-preview-btn" onClick={() => setIsPreviewMode(false)}>
                     <BiXCircle size={20} />
                     <span>Exit Preview</span>
                 </button>
@@ -632,306 +778,103 @@ const EditorPage = ({ setCart, customization }) => {
 
             {/* Main Workspace */}
             <div className="editor-layout">
-                {/* Unified Left Sidebar (Phase 3 Preservation) */}
                 {!isPreviewMode && (
                     <div className="editor-sidebar-left">
-                        <div className="sidebar-header">
-                            <h3>Invite Editor</h3>
-                        </div>
-                        <div className="sidebar-content">
-                            {/* 1. Add Element tools */}
-                            <div className="data-section tools-section">
-                                <h4>Add Element</h4>
-                                <div className="tools-grid">
-                                    <button onClick={() => handleAddLayer()} className="side-tool-btn">
-                                        <BiType size={20} />
-                                        <span>Text</span>
-                                    </button>
-                                    <button className="side-tool-btn" onClick={() => {/* TODO */ }}>
-                                        <BiStars size={20} />
-                                        <span>Sticker</span>
-                                    </button>
-                                    <button className="side-tool-btn" onClick={() => {/* TODO */ }}>
-                                        <BiImage size={20} />
-                                        <span>Image</span>
-                                    </button>
-                                    <button className="side-tool-btn" onClick={() => {/* TODO */ }}>
-                                        <BiSquare size={20} />
-                                        <span>Shape</span>
-                                    </button>
-                                </div>
-                            </div>
-
-                            {/* View Switcher (Carousel in Sidebar) */}
-                            {template && ((template.views && template.views.length > 1) || (template.images && template.images.length > 1)) && (
-                                <div className="data-section views-section">
-                                    <h4>Card Views</h4>
-                                    <div className="view-carousel" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--bg-secondary)', padding: '8px', borderRadius: '8px', border: '1px solid var(--border-soft)' }}>
-                                        <button
-                                            className="btn btn-icon btn-sm"
-                                            onClick={() => {
-                                                const total = (template.views || template.images).length;
-                                                const newIndex = (activeViewIndex - 1 + total) % total;
-                                                handleSwitchView(newIndex);
-                                            }}
-                                            disabled={(template.views || template.images).length <= 1}
-                                            title="Previous View"
-                                        >
-                                            <BiChevronDown size={20} style={{ transform: 'rotate(90deg)' }} />
-                                        </button>
-
-                                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                                            <span style={{ fontSize: '14px', fontWeight: '600', color: 'var(--text-primary)' }}>
-                                                View {activeViewIndex + 1}
-                                            </span>
-                                            <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                                                of {(template.views || template.images).filter(v => v).length}
-                                            </span>
-                                        </div>
-
-                                        <button
-                                            className="btn btn-icon btn-sm"
-                                            onClick={() => {
-                                                const total = (template.views || template.images).length;
-                                                const newIndex = (activeViewIndex + 1) % total;
-                                                handleSwitchView(newIndex);
-                                            }}
-                                            disabled={(template.views || template.images).length <= 1}
-                                            title="Next View"
-                                        >
-                                            <BiChevronUp size={20} style={{ transform: 'rotate(90deg)' }} />
-                                        </button>
-                                    </div>
-                                </div>
-                            )}
-
-
-
-
-
-
-
-                            {/* 2. Selection Properties (Contextual) */}
-                            {selectedLayer && (
-                                <div className="data-section properties-section">
-                                    <h4>Layer Properties</h4>
-                                    <textarea
-                                        className="sidebar-textarea"
-                                        value={selectedLayer.text}
-                                        onChange={(e) => handleUpdateLayer(selectedLayer.id, { text: e.target.value })}
-                                        placeholder="Edit text..."
-                                    />
-
-                                    <div className="property-row">
-                                        <div className="property-col">
-                                            <label>Font Family</label>
-                                            <select
-                                                className="sidebar-select"
-                                                value={selectedLayer.fontFamily}
-                                                onChange={(e) => handleUpdateLayer(selectedLayer.id, { fontFamily: e.target.value })}
-                                            >
-                                                <option value="Montserrat, sans-serif">Montserrat</option>
-                                                <option value="Playfair Display, serif">Playfair</option>
-                                                <option value="Great Vibes, cursive">Great Vibes</option>
-                                                <option value="Inter, sans-serif">Inter</option>
-                                            </select>
-                                        </div>
-                                        <div className="property-col" style={{ minWidth: '100px' }}>
-                                            <label>Size</label>
-                                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--bg-secondary)', border: '1px solid var(--border-soft)', borderRadius: '30px', padding: '2px 4px' }}>
-                                                <button
-                                                    onClick={() => handleUpdateLayer(selectedLayer.id, { fontSize: Math.max(8, (selectedLayer.fontSize || 12) - 1) })}
-                                                    style={{ width: '28px', height: '28px', border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--text-muted)', fontSize: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center', paddingBottom: '2px' }}
-                                                >
-                                                    −
-                                                </button>
-                                                <span style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text-primary)' }}>{selectedLayer.fontSize}</span>
-                                                <button
-                                                    onClick={() => handleUpdateLayer(selectedLayer.id, { fontSize: (selectedLayer.fontSize || 12) + 1 })}
-                                                    style={{ width: '28px', height: '28px', border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--text-muted)', fontSize: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                                                >
-                                                    +
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div className="property-row">
-                                        <div className="property-col">
-                                            <label>Color</label>
-                                            <div className="sidebar-color-picker">
-                                                <input
-                                                    type="color"
-                                                    value={selectedLayer.color}
-                                                    onChange={(e) => handleUpdateLayer(selectedLayer.id, { color: e.target.value })}
-                                                />
-                                                <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{selectedLayer.color}</span>
-                                            </div>
-                                        </div>
-                                        <div className="property-col">
-                                            <label>Align</label>
-                                            <div className="sidebar-btn-group">
-                                                <button className={selectedLayer.textAlign === 'left' ? 'active' : ''} onClick={() => handleUpdateLayer(selectedLayer.id, { textAlign: 'left' })}>L</button>
-                                                <button className={selectedLayer.textAlign === 'center' ? 'active' : ''} onClick={() => handleUpdateLayer(selectedLayer.id, { textAlign: 'center' })}>C</button>
-                                                <button className={selectedLayer.textAlign === 'right' ? 'active' : ''} onClick={() => handleUpdateLayer(selectedLayer.id, { textAlign: 'right' })}>R</button>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div className="property-row">
-                                        <div className="property-col">
-                                            <label>Style</label>
-                                            <div className="sidebar-btn-group" style={{ display: 'flex', gap: '4px' }}>
-                                                <button style={{ flex: 1 }} className={selectedLayer.fontWeight === 'bold' ? 'active' : ''} onClick={() => handleUpdateLayer(selectedLayer.id, { fontWeight: selectedLayer.fontWeight === 'bold' ? 'normal' : 'bold' })}>Bold</button>
-                                                <button style={{ flex: 1 }} className={selectedLayer.fontStyle === 'italic' ? 'active' : ''} onClick={() => handleUpdateLayer(selectedLayer.id, { fontStyle: selectedLayer.fontStyle === 'italic' ? 'normal' : 'italic' })}>Italic</button>
-                                                <button style={{ flex: 1 }} className={selectedLayer.textTransform === 'uppercase' ? 'active' : ''} onClick={() => handleUpdateLayer(selectedLayer.id, { textTransform: selectedLayer.textTransform === 'uppercase' ? 'none' : 'uppercase' })}>Caps</button>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div className="property-row" style={{ marginTop: '15px' }}>
-                                        <div className="property-col">
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                                                <label>Letter Spacing</label>
-                                                <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{parseInt(selectedLayer.letterSpacing) || 0}</span>
-                                            </div>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                                <button
-                                                    onClick={() => handleUpdateLayer(selectedLayer.id, { letterSpacing: Math.max(-5, (parseInt(selectedLayer.letterSpacing) || 0) - 1) })}
-                                                    style={{ width: '28px', height: '28px', border: '1px solid var(--border-soft)', background: 'var(--bg-secondary)', borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-main)', paddingBottom: '2px', fontSize: '16px' }}
-                                                >
-                                                    −
-                                                </button>
-                                                <div style={{ flex: 1, display: 'flex', alignItems: 'center', padding: '0 5px' }}>
-                                                    <input
-                                                        type="range"
-                                                        min="-5" max="50"
-                                                        value={parseInt(selectedLayer.letterSpacing) || 0}
-                                                        onChange={(e) => handleUpdateLayer(selectedLayer.id, { letterSpacing: parseInt(e.target.value) })}
-                                                        style={{ width: '100%', accentColor: 'var(--text-primary)', height: '4px', borderRadius: '2px', cursor: 'pointer' }}
-                                                    />
-                                                </div>
-                                                <button
-                                                    onClick={() => handleUpdateLayer(selectedLayer.id, { letterSpacing: Math.min(50, (parseInt(selectedLayer.letterSpacing) || 0) + 1) })}
-                                                    style={{ width: '28px', height: '28px', border: '1px solid var(--border-soft)', background: 'var(--bg-secondary)', borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-main)', fontSize: '16px' }}
-                                                >
-                                                    +
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {/* Layer Management Controls */}
-                                    <div style={{ marginTop: '16px' }}>
-                                        <label style={{ display: 'block', fontSize: '12px', fontWeight: '500', color: 'var(--text-main)', marginBottom: '8px' }}>Layer Order</label>
-                                        <div style={{ display: 'grid', gap: '8px', marginBottom: '12px' }}>
-                                            <button
-                                                className="btn btn-outline btn-sm"
-                                                style={{ flex: 1 }}
-                                                onClick={() => bringForward(selectedLayer.id)}
-                                                title="Bring Forward"
-                                            >
-                                                <BiArrowUpShort size={16} />
-                                                <span>Forward</span>
-                                            </button>
-                                            <button
-                                                className="btn btn-outline btn-sm"
-                                                style={{ flex: 1 }}
-                                                onClick={() => sendBackward(selectedLayer.id)}
-                                                title="Send Backward"
-                                            >
-                                                <BiArrowDownShort size={16} />
-                                                <span>Backward</span>
-                                            </button>
-                                        </div>
-                                        <button
-                                            className="btn btn-outline btn-sm"
-                                            style={{ width: '100%', marginBottom: '12px' }}
-                                            onClick={() => duplicateLayer(selectedLayer.id)}
-                                            title="Duplicate Layer"
-                                        >
-                                            <BiFiles size={14} />
-                                            <span>Duplicate Layer</span>
-                                        </button>
-                                    </div>
-
-                                    <button
-                                        className="btn-delete-layer"
-                                        style={{ marginTop: '12px' }}
-                                        onClick={() => handleDeleteLayer(selectedLayer.id)}
-                                    >
-                                        <BiTrash size={14} />
-                                        <span>Remove Element</span>
-                                    </button>
-                                </div>
-                            )}
-
-                            {/* 4. Magic Tools (RETAINED) */}
-                            <div className="data-section magic-section">
-                                <h4><BiStars size={14} style={{ marginRight: '6px' }} /> Magic Tools</h4>
-                                <div className="data-field">
-                                    <label>Creative Tone</label>
-                                    <select
-                                        className="sidebar-select"
-                                        style={{ marginBottom: '10px' }}
-                                        value={magicTheme}
-                                        onChange={(e) => setMagicTheme(e.target.value)}
-                                    >
-                                        <option value="ROMANTIC">Romantic & Sweet</option>
-                                        <option value="MODERN">Modern & Bold</option>
-                                        <option value="TRADITIONAL">Traditional & Formal</option>
-                                    </select>
-                                </div>
-                                <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
-                                    <button className="btn btn-outline btn-sm" style={{ flex: 1 }} onClick={() => handleApplySuggestion('headers')}>Header</button>
-                                    <button className="btn btn-outline btn-sm" style={{ flex: 1 }} onClick={() => handleApplySuggestion('bodies')}>Body</button>
-                                </div>
-                                <button className="btn btn-primary btn-sm" style={{ width: '100%' }} onClick={handleAutoLayout}>Magic Tidy</button>
-                            </div>
-                        </div>
+                        {/* 3️⃣ Add Element Icons */}
+                        <button onClick={() => handleAddLayer()} className="tool-btn-icon" title="Add Text">
+                            <BiType size={24} />
+                        </button>
+                        <button className="tool-btn-icon" title="Add Sticker">
+                            <BiStars size={24} />
+                        </button>
+                        <button className="tool-btn-icon" title="Add Image">
+                            <BiImage size={24} />
+                        </button>
+                        <button className="tool-btn-icon" title="Add Shape">
+                            <BiSquare size={20} />
+                        </button>
+                        <div style={{ flex: 1 }}></div>
+                        <button className="tool-btn-icon" title="Settings">
+                            <BiSliders size={20} />
+                        </button>
                     </div>
                 )}
 
-                {/* Canvas Area container */}
-                <div className="editor-canvas-container" onClick={() => setSelectedLayerId(null)}>
-                    <div className="canvas-wrapper" onClick={(e) => e.stopPropagation()}>
-                        <Canvas
-                            width={template.views?.[activeViewIndex]?.width || template.width}
-                            height={template.views?.[activeViewIndex]?.height || template.height}
-                            backgroundUrl={
-                                // Use view specific background if available, else standard fallback
-                                template.images?.[activeViewIndex] ||
-                                template.views?.[activeViewIndex]?.backgroundUrl ||
-                                template.backgroundUrl
-                            }
-                            layers={layers}
-                            selectedLayerId={selectedLayerId}
-                            onSelectLayer={setSelectedLayerId}
-                            onUpdateLayer={handleUpdateLayer}
-                            onCommitHistory={commitHistory}
-                            fieldValues={fieldValues}
-                            showMargins={showMargins}
-                            showWatermark={showWatermark}
-                            isPreview={isPreviewMode}
-                            zoom={zoom}
-                            onContextMenu={handleContextMenu}
-                        />
+                {/* 7️⃣ Canvas Area */}
+                <div className="editor-canvas-container">
+                    <div className="canvas-scroll-view">
+                        <div className="canvas-content-wrapper" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '24px' }}>
+                            <div className="canvas-paper-effect">
+                                <Canvas
+                                    width={template.views?.[activeViewIndex]?.width || template.width}
+                                    height={template.views?.[activeViewIndex]?.height || template.height}
+                                    backgroundUrl={
+                                        // Use view specific background if available, else standard fallback
+                                        template.images?.[activeViewIndex] ||
+                                        template.views?.[activeViewIndex]?.backgroundUrl ||
+                                        template.backgroundUrl
+                                    }
+                                    layers={layers}
+                                    selectedLayerId={selectedLayerId}
+                                    onSelectLayer={setSelectedLayerId}
+                                    onUpdateLayer={handleUpdateLayer}
+                                    onCommitHistory={commitHistory}
+                                    fieldValues={fieldValues}
+                                    isPreview={isPreviewMode}
+                                    zoom={zoom}
+                                    showMargins={showMargins}
+                                    showWatermark={showWatermark}
+                                    onContextMenu={handleContextMenu}
+                                />
+                            </div>
+
+                            {/* 4️⃣ View Switcher (Moved below Canvas) */}
+                            {template && ((template.views && template.views.length > 1) || (template.images && template.images.length > 1)) && !isPreviewMode && (
+                                <div className="premium-view-carousel" style={{ background: 'white', boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}>
+                                    <button
+                                        className="view-nav-btn"
+                                        onClick={() => {
+                                            const total = (template.views || template.images).length;
+                                            const newIndex = (activeViewIndex - 1 + total) % total;
+                                            handleSwitchView(newIndex);
+                                        }}
+                                        disabled={(template.views || template.images).length <= 1}
+                                    >
+                                        <BiArrowLeft size={16} />
+                                    </button>
+                                    <div className="view-info-display" style={{ minWidth: '80px' }}>
+                                        <span className="view-num-bold">{activeViewIndex + 1}</span>
+                                        <span className="view-label-mute" style={{ display: 'block', marginTop: '2px' }}>of {(template.views || template.images).filter(v => v).length} views</span>
+                                    </div>
+                                    <button
+                                        className="view-nav-btn"
+                                        onClick={() => {
+                                            const total = (template.views || template.images).length;
+                                            const newIndex = (activeViewIndex + 1) % total;
+                                            handleSwitchView(newIndex);
+                                        }}
+                                        disabled={(template.views || template.images).length <= 1}
+                                    >
+                                        <BiArrowLeft size={16} style={{ transform: 'rotate(180deg)' }} />
+                                    </button>
+                                </div>
+                            )}
+                        </div>
                     </div>
 
-
-
-                    {/* Zoom UI Refresh */}
+                    {/* 8️⃣ Zoom Controls */}
                     {!isPreviewMode && (
-                        <div className="zoom-controls">
-                            <button onClick={() => setZoom(Math.max(0.1, zoom - 0.1))} title="Zoom Out">
+                        <div className="zoom-controls-glass">
+                            <button className="zoom-btn-cir" onClick={() => setZoom(Math.max(0.1, zoom - 0.1))} title="Zoom Out">
                                 <BiZoomOut size={18} />
                             </button>
-                            <span>{Math.round(zoom * 100)}%</span>
-                            <button onClick={() => setZoom(Math.min(3, zoom + 0.1))} title="Zoom In">
+                            <span className="zoom-pct-bold">{Math.round(zoom * 100)}%</span>
+                            <button className="zoom-btn-cir" onClick={() => setZoom(Math.min(3, zoom + 0.1))} title="Zoom In">
                                 <BiZoomIn size={18} />
                             </button>
-                            <button className="zoom-reset-btn" onClick={() => setZoom(1)} title="Reset Zoom">
-                                <BiArrowCounterclockwise size={18} />
+                            <div className="vertical-divider sm"></div>
+                            <button className="zoom-btn-cir" onClick={() => setZoom(1)} style={{ fontSize: '10px', fontWeight: '700' }}>
+                                RESET
                             </button>
                         </div>
                     )}
@@ -947,9 +890,152 @@ const EditorPage = ({ setCart, customization }) => {
                         />
                     )}
                 </div>
+
+                {/* Right Sidebar - Properties & Global Settings */}
+                {!isPreviewMode && (
+                    <div className="editor-sidebar-right">
+                        <div className="sidebar-header">
+                            <h3>{selectedLayer ? "Layer Properties" : "Page Settings"}</h3>
+                        </div>
+
+                        <div className="sidebar-content">
+                            {/* Removed View Switcher from here */}
+
+                            {/* 5️⃣ Layer Properties Panel */}
+                            {selectedLayer ? (
+                                <div className="data-section">
+                                    <div className="properties-group-block">
+                                        <div className="segmented-lang">
+                                            <button className={`lang-btn ${inputLanguage === 'en' ? 'active' : ''}`} onClick={() => setInputLanguage('en')}>English</button>
+                                            <button className={`lang-btn ${inputLanguage === 'hi' ? 'active' : ''}`} onClick={() => setInputLanguage('hi')}>Hindi</button>
+                                            <button className={`lang-btn ${inputLanguage === 'ur' ? 'active' : ''}`} onClick={() => setInputLanguage('ur')}>Urdu</button>
+                                        </div>
+                                        {inputLanguage !== 'en' ? (
+                                            <div className="transliterate-container">
+                                                <ReactTransliterate
+                                                    renderComponent={(props) => (
+                                                        <textarea
+                                                            {...props}
+                                                            className="sidebar-textarea"
+                                                            dir={inputLanguage === 'ur' ? 'rtl' : 'ltr'}
+                                                            style={{ textAlign: inputLanguage === 'ur' ? 'right' : 'inherit' }}
+                                                        />
+                                                    )}
+                                                    value={selectedLayer.text}
+                                                    onChangeText={(text) => handleUpdateLayer(selectedLayer.id, { text })}
+                                                    lang={inputLanguage}
+                                                    placeholder="Type phonetically..."
+                                                />
+                                            </div>
+                                        ) : (
+                                            <textarea
+                                                className="sidebar-textarea"
+                                                value={selectedLayer.text}
+                                                onChange={(e) => handleUpdateLayer(selectedLayer.id, { text: e.target.value })}
+                                                placeholder="Edit text content..."
+                                            />
+                                        )}
+                                    </div>
+
+                                    <div className="properties-group-block">
+                                        <div className="prop-control-row">
+                                            <div className="prop-field">
+                                                <label className="prop-field-label">Font Family</label>
+                                                <select
+                                                    className="sidebar-select"
+                                                    value={selectedLayer.fontFamily}
+                                                    onChange={(e) => handleUpdateLayer(selectedLayer.id, { fontFamily: e.target.value })}
+                                                >
+                                                    <option value="Montserrat, sans-serif">Montserrat</option>
+                                                    <option value="Playfair Display, serif">Playfair</option>
+                                                    <option value="Great Vibes, cursive">Great Vibes</option>
+                                                    <option value="Inter, sans-serif">Inter</option>
+                                                </select>
+                                            </div>
+                                            <div className="prop-field" style={{ minWidth: '110px' }}>
+                                                <label className="prop-field-label">Size</label>
+                                                <div className="font-size-stepper">
+                                                    <button className="step-btn-circle" onClick={() => handleUpdateLayer(selectedLayer.id, { fontSize: Math.max(8, (selectedLayer.fontSize || 12) - 1) })}>−</button>
+                                                    <span className="step-val-bold">{selectedLayer.fontSize}</span>
+                                                    <button className="step-btn-circle" onClick={() => handleUpdateLayer(selectedLayer.id, { fontSize: (selectedLayer.fontSize || 12) + 1 })}>+</button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="properties-group-block">
+                                        <div className="prop-control-row">
+                                            <div className="prop-field">
+                                                <label className="prop-field-label">Color</label>
+                                                <div className="sidebar-color-picker">
+                                                    <input
+                                                        type="color"
+                                                        value={selectedLayer.color}
+                                                        onChange={(e) => handleUpdateLayer(selectedLayer.id, { color: e.target.value })}
+                                                    />
+                                                    <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{selectedLayer.color}</span>
+                                                </div>
+                                            </div>
+                                            <div className="prop-field">
+                                                <label className="prop-field-label">Align</label>
+                                                <div className="segmented-lang" style={{ background: 'var(--bg-soft)', padding: '2px' }}>
+                                                    <button className={`lang-btn ${selectedLayer.textAlign === 'left' ? 'active' : ''}`} style={{ fontSize: '10px' }} onClick={() => handleUpdateLayer(selectedLayer.id, { textAlign: 'left' })}>L</button>
+                                                    <button className={`lang-btn ${selectedLayer.textAlign === 'center' ? 'active' : ''}`} style={{ fontSize: '10px' }} onClick={() => handleUpdateLayer(selectedLayer.id, { textAlign: 'center' })}>C</button>
+                                                    <button className={`lang-btn ${selectedLayer.textAlign === 'right' ? 'active' : ''}`} style={{ fontSize: '10px' }} onClick={() => handleUpdateLayer(selectedLayer.id, { textAlign: 'right' })}>R</button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div className="prop-field" style={{ marginTop: '8px' }}>
+                                            <label className="prop-field-label">Style</label>
+                                            <div className="segmented-lang" style={{ background: 'var(--bg-soft)', padding: '2px' }}>
+                                                <button className={`lang-btn ${selectedLayer.fontWeight === 'bold' ? 'active' : ''}`} style={{ fontSize: '10px' }} onClick={() => handleUpdateLayer(selectedLayer.id, { fontWeight: selectedLayer.fontWeight === 'bold' ? 'normal' : 'bold' })}>Bold</button>
+                                                <button className={`lang-btn ${selectedLayer.fontStyle === 'italic' ? 'active' : ''}`} style={{ fontSize: '10px' }} onClick={() => handleUpdateLayer(selectedLayer.id, { fontStyle: selectedLayer.fontStyle === 'italic' ? 'normal' : 'italic' })}>Italic</button>
+                                                <button className={`lang-btn ${selectedLayer.textTransform === 'uppercase' ? 'active' : ''}`} style={{ fontSize: '10px' }} onClick={() => handleUpdateLayer(selectedLayer.id, { textTransform: selectedLayer.textTransform === 'uppercase' ? 'none' : 'uppercase' })}>Caps</button>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="properties-group-block">
+                                        <label className="prop-field-label">Layer Actions</label>
+                                        <div className="layer-action-grid">
+                                            <button className="action-pill-btn" onClick={() => bringForward(selectedLayer.id)}>
+                                                <BiArrowUpShort size={20} />
+                                                <span>Forward</span>
+                                            </button>
+                                            <button className="action-pill-btn" onClick={() => sendBackward(selectedLayer.id)}>
+                                                <BiArrowDownShort size={20} />
+                                                <span>Backward</span>
+                                            </button>
+                                            <button className="action-pill-btn" onClick={() => duplicateLayer(selectedLayer.id)}>
+                                                <BiFiles size={16} />
+                                                <span>Duplicate</span>
+                                            </button>
+                                            <button className="action-pill-btn danger" onClick={() => handleDeleteLayer(selectedLayer.id)}>
+                                                <BiTrash2 size={16} />
+                                                <span>Delete</span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="data-section">
+                                    <div style={{ marginTop: '20px', padding: '16px', background: 'var(--bg-soft)', borderRadius: '12px' }}>
+                                        <h4 style={{ fontSize: '13px', fontWeight: '600', marginBottom: '8px' }}>Quick Tips</h4>
+                                        <ul style={{ fontSize: '12px', color: 'var(--text-muted)', paddingLeft: '16px', lineHeight: '1.6' }}>
+                                            <li>Double-click text to edit on canvas.</li>
+                                            <li>Drag corners to resize (coming soon).</li>
+                                            <li>Use arrow keys to nudge elements.</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
             </div>
-        </div >
+        </div>
     );
 };
 
 export default EditorPage;
+
